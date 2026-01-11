@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/dae/EvidenceBundle.schema.json",
+  "title": "EvidenceBundle",
+  "type": "object",
+  "required": [
+    "spec",
+    "episode_id",
+    "episode_start",
+    "worst_window_ref",
+    "primary_verdict",
+    "confidence",
+    "observability",
+    "timeline"
+  ],
+  "properties": {
+    "spec": {
+      "type": "string"
+    },
+    "episode_id": {
+      "type": "string"
+    },
+    "episode_start": {
+      "type": "string"
+    },
+    "worst_window_ref": {
+      "type": "string"
+    },
+    "primary_verdict": {
+      "type": "string",
+      "enum": [
+        "WAN_UNSTABLE",
+        "WIFI_CONGESTION",
+        "MESH_FLAP",
+        "DFS_EVENT",
+        "OPAQUE_RISK",
+        "UNKNOWN"
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "evidence_refs": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "observability": {
+      "type": "object",
+      "required": [
+        "observability_status",
+        "opaque_risk",
+        "missing_refs",
+        "origin_hint"
+      ],
+      "properties": {
+        "observability_status": {
+          "type": "string",
+          "enum": [
+            "SUFFICIENT",
+            "INSUFFICIENT"
+          ]
+        },
+        "opaque_risk": {
+          "type": "boolean"
+        },
+        "missing_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "origin_hint": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "timeline": {
+      "type": "object",
+      "required": [
+        "metrics_points",
+        "change_events",
+        "pre_change_snapshots"
+      ],
+      "properties": {
+        "metrics_points": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "change_events": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "pre_change_snapshots": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

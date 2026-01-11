@@ -1,0 +1,6 @@
+# fp_proof naming note
+# This package implements Free v1 artifacts commonly delivered as:
+# - Baseline Proof (install verification)
+# - Incident Proof (OBH export)
+# - Fingerprint Proof (fp-lite output)
+# Internal pipeline name: fp_recognition

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/dae/fp_lite.schema.json",
+  "title": "fp-lite output",
+  "type": "object",
+  "required": [
+    "fp_before",
+    "fp_during",
+    "fp_after",
+    "delta_during_minus_before",
+    "delta_after_minus_before",
+    "pattern_label",
+    "confidence"
+  ],
+  "properties": {
+    "fp_before": {
+      "type": "object"
+    },
+    "fp_during": {
+      "type": "object"
+    },
+    "fp_after": {
+      "type": "object"
+    },
+    "delta_during_minus_before": {
+      "type": "object"
+    },
+    "delta_after_minus_before": {
+      "type": "object"
+    },
+    "pattern_label": {
+      "type": "string",
+      "enum": [
+        "drift",
+        "stability",
+        "boundary",
+        "oscillation"
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  },
+  "additionalProperties": true
+}

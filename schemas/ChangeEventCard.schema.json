@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/dae/ChangeEventCard.schema.json",
+  "title": "ChangeEventCard",
+  "type": "object",
+  "required": [
+    "event_time",
+    "event_type"
+  ],
+  "properties": {
+    "event_time": {
+      "type": "number",
+      "minimum": 0
+    },
+    "event_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "origin_hint": {
+      "type": "string",
+      "enum": [
+        "cloud",
+        "acs",
+        "local",
+        "app",
+        "firmware",
+        "driver",
+        "onchip",
+        "unknown"
+      ]
+    },
+    "trigger": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "scheduled",
+        "auto",
+        "watchdog",
+        "unknown"
+      ]
+    },
+    "target_scope": {
+      "type": "string",
+      "enum": [
+        "wan",
+        "wlan",
+        "mesh",
+        "system",
+        "unknown"
+      ]
+    },
+    "change_ref": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "version_refs": {
+      "type": "object",
+      "properties": {
+        "fw": {
+          "type": "string"
+        },
+        "driver": {
+          "type": "string"
+        },
+        "agent": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "fw",
+        "driver",
+        "agent"
+      ],
+      "additionalProperties": false
+    },
+    "window_ref": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^Ws:\\d+$"
+    }
+  },
+  "additionalProperties": false
+}

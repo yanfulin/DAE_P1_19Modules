@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/dae/ObservabilityResult.schema.json",
+  "title": "ObservabilityResult",
+  "type": "object",
+  "required": [
+    "observability_status",
+    "opaque_risk",
+    "missing_refs"
+  ],
+  "properties": {
+    "observability_status": {
+      "type": "string",
+      "enum": [
+        "SUFFICIENT",
+        "INSUFFICIENT"
+      ]
+    },
+    "opaque_risk": {
+      "type": "boolean"
+    },
+    "missing_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "origin_hint": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

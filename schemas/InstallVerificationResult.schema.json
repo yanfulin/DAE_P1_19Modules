@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/dae/InstallVerificationResult.schema.json",
+  "title": "InstallVerificationResult",
+  "type": "object",
+  "required": [
+    "verify_window_sec",
+    "sample_count",
+    "readiness_verdict",
+    "dominant_factor",
+    "confidence",
+    "fp_vector"
+  ],
+  "properties": {
+    "verify_window_sec": {
+      "type": "integer",
+      "minimum": 30
+    },
+    "sample_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "readiness_verdict": {
+      "type": "string",
+      "enum": [
+        "PASS",
+        "MARGINAL",
+        "FAIL"
+      ]
+    },
+    "dominant_factor": {
+      "type": "string",
+      "enum": [
+        "WAN",
+        "WIFI",
+        "MESH",
+        "OPAQUE",
+        "UNKNOWN"
+      ]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "fp_vector": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

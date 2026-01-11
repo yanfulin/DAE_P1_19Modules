@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/dae/PreChangeSnapshot.schema.json",
+  "title": "PreChangeSnapshot",
+  "type": "object",
+  "required": [
+    "snapshot_ref_id",
+    "snapshot_scope",
+    "capture_time",
+    "snapshot_digest"
+  ],
+  "properties": {
+    "snapshot_ref_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "snapshot_scope": {
+      "type": "string",
+      "enum": [
+        "wan",
+        "wlan",
+        "mesh",
+        "system",
+        "unknown"
+      ]
+    },
+    "capture_time": {
+      "type": "number",
+      "minimum": 0
+    },
+    "snapshot_digest": {
+      "type": "string",
+      "minLength": 16
+    },
+    "readable_fields": {
+      "type": [
+        "object",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

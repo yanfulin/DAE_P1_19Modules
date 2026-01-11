@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment
+.env
+.venv
+env/
+venv/
+*.DS_Store
+
+# Output/Generated
+out/
+TEST_REPORT.md
+TEST_REPORT_10RUNS.md

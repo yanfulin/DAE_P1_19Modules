@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/dae/MetricSample.schema.json",
+  "title": "MetricSample",
+  "type": "object",
+  "required": [
+    "ts",
+    "window_ref"
+  ],
+  "properties": {
+    "ts": {
+      "type": "number",
+      "minimum": 0,
+      "description": "epoch seconds"
+    },
+    "window_ref": {
+      "type": "string",
+      "pattern": "^Ws:\\d+$"
+    },
+    "latency_p95_ms": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "loss_pct": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 100
+    },
+    "retry_pct": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 100
+    },
+    "airtime_busy_pct": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 100
+    },
+    "roam_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "mesh_flap_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "wan_sinr_db": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": -50,
+      "maximum": 60
+    },
+    "wan_rsrp_dbm": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": -200,
+      "maximum": -20
+    },
+    "wan_reattach_count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}

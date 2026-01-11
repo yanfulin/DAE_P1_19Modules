@@ -13,7 +13,7 @@ To align C01–C20 to your official feature dictionary:
 - Run: `python update_capability_map.py` to regenerate `CAPABILITY_MAP.md`
 
 
-## Install Verification (Default 3 minutes)
+## Install Verification (Default 3 minutes):
 - Module: `dae_p1/M20_install_verify.py`
 - Default verify window: 180 seconds (3 minutes)
 - CLI helper: `install_verify_run.py <bundle.json>`

@@ -85,8 +85,9 @@ export default function App() {
         <View style={styles.grid}>
           <MetricCard label="Down Rate" value={metrics?.in_rate?.toFixed(2)} unit="Mbps" />
           <MetricCard label="Up Rate" value={metrics?.out_rate?.toFixed(2)} unit="Mbps" />
-          <MetricCard label="Latency" value={metrics?.latency?.toFixed(1)} unit="ms" />
-          <MetricCard label="Jitter" value={metrics?.jitter?.toFixed(1)} unit="ms" />
+          <MetricCard label="Latency" value={metrics?.latency_p95_ms?.toFixed(1)} unit="ms" />
+          <MetricCard label="Jitter" value={metrics?.jitter_ms?.toFixed(1)} unit="ms" />
+          <MetricCard label="Signal" value={metrics?.signal_strength_pct} unit="%" />
           <MetricCard label="CPU" value={metrics?.cpu_load?.toFixed(1)} unit="%" />
           <MetricCard label="Memory" value={metrics?.mem_load?.toFixed(1)} unit="%" />
         </View>

@@ -3,7 +3,8 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from dae_p1.adapters.demo_adapter import DemoAdapter
+# from dae_p1.adapters.demo_adapter import DemoAdapter
+from dae_p1.adapters.windows_wifi_adapter import WindowsWifiAdapter
 from dae_p1.core_service import OBHCoreService, CoreRuntimeConfig
 
 # Configure logging
@@ -31,8 +32,8 @@ async def run_core_loop():
 async def lifespan(app: FastAPI):
     # Startup
     global adapter, core, background_task
-    logger.info("Initializing Core Service...")
-    adapter = DemoAdapter()
+    logger.info("Initializing Core Service with WindowsWifiAdapter...")
+    adapter = WindowsWifiAdapter()
     
     # Use accelerate=True so it doesn't sleep internally, we control loop with asyncio
     cfg = CoreRuntimeConfig(sample_interval_sec=1, buffer_minutes=60, accelerate=True)

@@ -149,16 +149,37 @@ def _get_local_status():
 
 def _get_mock_fleet():
     """Generate a mixed list of real and mock devices."""
-    local_status = _get_local_status()
+    
+    # Calculate real status for local device
+    local_status = "unknown"
+    primary_issue = "None"
+    closure = "NOT_READY"
+    readiness_verdict = "FAIL"
+    
+    if core:
+        # standard simple status
+        local_status = calculate_simple_status(core)
+        
+        # authoritative verify logic
+        snaps = core.metrics_buf.snapshot()
+        v_result = verify_install(snaps)
+        
+        closure = "READY" if v_result.closure_readiness == "ready" else "NOT_READY"
+        readiness_verdict = v_result.readiness_verdict
+        
+        if v_result.dominant_factor != "UNKNOWN" and v_result.dominant_factor != "OPAQUE":
+             primary_issue = v_result.dominant_factor + " Issue"
+        elif local_status != "ok":
+             primary_issue = "Stability"
     
     # Real Device
     real_device = {
         "id": "local",
         "name": "Local CPE (Real)",
         "current_state": local_status,
-        "primary_issue_class": "Wi-Fi Coverage" if local_status != "ok" else "None",
-        "closure_readiness": "READY" if local_status == "ok" else "NOT_READY",
-        "last_change_ref": "T-5m",
+        "primary_issue_class": primary_issue,
+        "closure_readiness": closure,
+        "last_change_ref": "T-1m",
         "feature_deltas": ["BandSteering: OFF"] if local_status == "unstable" else []
     }
 
@@ -206,10 +227,14 @@ def get_device_detail(device_id: str):
     
     # Local Device (Real-ish Data)
     if device_id == "local":
-        local_status = _get_local_status()
+        local_status = "unknown"
+        if core:
+            local_status = calculate_simple_status(core)
         
         # We can pull real snapshots if available, or mock them if empty
         snapshots = []
+        v_result = None
+        
         if core:
             snaps = core.snaps_buf.snapshot()
             # Convert to simplified format for UI
@@ -221,12 +246,24 @@ def get_device_detail(device_id: str):
                     "time": s.ts
                 })
             snapshots = formatted_snaps
+            
+            # Run verification for detail
+            m_snaps = core.metrics_buf.snapshot()
+            v_result = verify_install(m_snaps)
         
         if not snapshots:
             snapshots = [
                 {"ref": "S-100", "type": "post-install", "time": 1000},
                 {"ref": "S-105", "type": "periodic", "time": 1050}
             ]
+
+        # Use verification result if available
+        pass_fail = "FAIL"
+        if v_result:
+             pass_fail = v_result.readiness_verdict
+        elif local_status == "ok":
+             # fallback if core matches but no metrics (unlikely with core) or no core
+             pass_fail = "PASS"
 
         return {
             "id": "local",
@@ -240,8 +277,8 @@ def get_device_detail(device_id: str):
                 {"feature": "DFS", "state": "ON", "reason": "Default", "ttl": None}
             ],
             "compliance_verdict": {
-                "result": "PASS" if local_status == "ok" else "FAIL",
-                "evidence_missing": []
+                "result": pass_fail,
+                "evidence_missing": [] if pass_fail == "PASS" else ["Stability Check"]
             }
         }
 

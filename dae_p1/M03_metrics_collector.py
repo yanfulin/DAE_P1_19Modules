@@ -20,7 +20,13 @@ class MetricsCollector:
                 mesh_flap_count: Optional[int]=None,
                 wan_sinr_db: Optional[float]=None,
                 wan_rsrp_dbm: Optional[float]=None,
-                wan_reattach_count: Optional[int]=None) -> MetricSample:
+                wan_reattach_count: Optional[int]=None,
+                jitter_ms: Optional[float]=None,
+                in_rate: Optional[float]=None,
+                out_rate: Optional[float]=None,
+                cpu_load: Optional[float]=None,
+                mem_load: Optional[float]=None,
+                signal_strength_pct: Optional[int]=None) -> MetricSample:
         ts = now_ts()
         ws = self.windowing.window_ref(ts, "Ws")
         return MetricSample(
@@ -29,5 +35,9 @@ class MetricsCollector:
             retry_pct=retry_pct, airtime_busy_pct=airtime_busy_pct,
             roam_count=roam_count, mesh_flap_count=mesh_flap_count,
             wan_sinr_db=wan_sinr_db, wan_rsrp_dbm=wan_rsrp_dbm,
-            wan_reattach_count=wan_reattach_count
+            wan_reattach_count=wan_reattach_count,
+            jitter_ms=jitter_ms,
+            in_rate=in_rate, out_rate=out_rate,
+            cpu_load=cpu_load, mem_load=mem_load,
+            signal_strength_pct=signal_strength_pct
         )

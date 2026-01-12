@@ -80,29 +80,29 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Loop as Background Loop
+    participant BgLoop as Background Loop
     participant Core as OBHCoreService
     participant Adapter
-    participant M01 as Windowing
     participant M03 as MetricsCollector
+    participant M01 as Windowing
     participant Buffers
     
-    loop Every sample_interval_sec
-        Loop->>Core: tick_once()
-        Core->>Adapter: collect_metric_sample()
-        Adapter->>M03: collect(latency, loss, retry, ...)
-        M03->>M01: Get window_ref (Ws)
-        M01-->>M03: "Ws:1234567890"
-        M03-->>Adapter: MetricSample
-        Adapter-->>Core: MetricSample
-        Core->>Buffers: metrics_buf.append(sample)
-        
-        Core->>Adapter: collect_change_events_and_snapshots()
-        Adapter-->>Core: (events[], snapshots[])
-        Core->>Buffers: events_buf.append(e) for e in events
-        Core->>Buffers: snaps_buf.append(s) for s in snapshots
-    end
+    BgLoop->>Core: tick_once()
+    Core->>Adapter: collect_metric_sample()
+    Adapter->>M03: collect()
+    M03->>M01: window_ref()
+    M01-->>M03: Ws:timestamp
+    M03-->>Adapter: MetricSample
+    Adapter-->>Core: MetricSample
+    Core->>Buffers: append to metrics_buf
+    
+    Core->>Adapter: collect_change_events_and_snapshots()
+    Adapter-->>Core: events and snapshots
+    Core->>Buffers: append to events_buf
+    Core->>Buffers: append to snaps_buf
 ```
+
+**This cycle repeats every 1-10 seconds based on `sample_interval_sec` configuration.**
 
 **Data Collected Each Cycle**:
 - **MetricSample**: 17 network metrics (latency, loss, retry, airtime, etc.)

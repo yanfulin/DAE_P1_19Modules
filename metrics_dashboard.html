@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAE Metrics Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.6s ease-out;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #a0aec0;
+            font-weight: 300;
+        }
+
+        .status-banner {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.ok {
+            background: #48bb78;
+            box-shadow: 0 0 20px #48bb78;
+        }
+
+        .status-indicator.unstable {
+            background: #ed8936;
+            box-shadow: 0 0 20px #ed8936;
+        }
+
+        .status-indicator.suspected {
+            background: #f56565;
+            box-shadow: 0 0 20px #f56565;
+        }
+
+        .status-indicator.investigating {
+            background: #4299e1;
+            box-shadow: 0 0 20px #4299e1;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.6s ease-out;
+            animation-fill-mode: both;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(102, 126, 234, 0.5);
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.2);
+        }
+
+        .metric-card:nth-child(1) {
+            animation-delay: 0.1s;
+        }
+
+        .metric-card:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .metric-card:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+
+        .metric-card:nth-child(4) {
+            animation-delay: 0.4s;
+        }
+
+        .metric-card:nth-child(5) {
+            animation-delay: 0.5s;
+        }
+
+        .metric-card:nth-child(6) {
+            animation-delay: 0.6s;
+        }
+
+        .metric-label {
+            font-size: 0.875rem;
+            color: #a0aec0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-unit {
+            font-size: 0.875rem;
+            color: #718096;
+            font-weight: 400;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 2rem;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .chart-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #e2e8f0;
+        }
+
+        .mini-chart {
+            height: 60px;
+            margin-top: 1rem;
+            position: relative;
+        }
+
+        .sparkline {
+            width: 100%;
+            height: 100%;
+        }
+
+        .last-updated {
+            text-align: center;
+            color: #718096;
+            font-size: 0.875rem;
+            margin-top: 2rem;
+        }
+
+        .error-message {
+            background: rgba(245, 101, 101, 0.1);
+            border: 1px solid rgba(245, 101, 101, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            color: #fc8181;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .verification-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 2rem;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .verification-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #e2e8f0;
+        }
+
+        .verification-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .verification-item {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .verification-item-label {
+            font-size: 0.75rem;
+            color: #a0aec0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+
+        .verification-item-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .ready {
+            color: #48bb78;
+        }
+
+        .not-ready {
+            color: #f56565;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>DAE Metrics Dashboard</h1>
+            <p class="subtitle">Real-time Windows WiFi Monitoring</p>
+        </header>
+
+        <div id="error-container"></div>
+
+        <div class="status-banner">
+            <div class="status-item">
+                <div class="status-indicator" id="status-indicator"></div>
+                <div>
+                    <div style="font-size: 0.875rem; color: #a0aec0;">System Status</div>
+                    <div style="font-size: 1.25rem; font-weight: 600;" id="system-status">Loading...</div>
+                </div>
+            </div>
+            <div class="status-item">
+                <div>
+                    <div style="font-size: 0.875rem; color: #a0aec0;">Auto-refresh</div>
+                    <div style="font-size: 1.25rem; font-weight: 600;">Every 2s</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Signal Strength</div>
+                <div class="metric-value" id="signal-strength">--</div>
+                <div class="metric-unit">%</div>
+                <canvas class="sparkline" id="signal-chart"></canvas>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">TX Rate</div>
+                <div class="metric-value" id="tx-rate">--</div>
+                <div class="metric-unit">Mbps</div>
+                <canvas class="sparkline" id="tx-chart"></canvas>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">RX Rate</div>
+                <div class="metric-value" id="rx-rate">--</div>
+                <div class="metric-unit">Mbps</div>
+                <canvas class="sparkline" id="rx-chart"></canvas>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">CPU Usage</div>
+                <div class="metric-value" id="cpu-usage">--</div>
+                <div class="metric-unit">%</div>
+                <canvas class="sparkline" id="cpu-chart"></canvas>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Memory Usage</div>
+                <div class="metric-value" id="memory-usage">--</div>
+                <div class="metric-unit">%</div>
+                <canvas class="sparkline" id="memory-chart"></canvas>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Timestamp</div>
+                <div class="metric-value" id="timestamp" style="font-size: 1.5rem;">--</div>
+                <div class="metric-unit">Unix Time</div>
+            </div>
+        </div>
+
+        <div class="verification-card">
+            <div class="verification-title">Installation Verification</div>
+            <div class="verification-grid">
+                <div class="verification-item">
+                    <div class="verification-item-label">Closure Readiness</div>
+                    <div class="verification-item-value" id="closure-readiness">--</div>
+                </div>
+                <div class="verification-item">
+                    <div class="verification-item-label">Readiness Verdict</div>
+                    <div class="verification-item-value" id="readiness-verdict">--</div>
+                </div>
+                <div class="verification-item">
+                    <div class="verification-item-label">Dominant Factor</div>
+                    <div class="verification-item-value" id="dominant-factor">--</div>
+                </div>
+                <div class="verification-item">
+                    <div class="verification-item-label">Confidence</div>
+                    <div class="verification-item-value" id="confidence">--</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="last-updated">
+            Last updated: <span id="last-updated">Never</span>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        const REFRESH_INTERVAL = 2000; // 2 seconds
+
+        // Data storage for charts
+        const chartData = {
+            signal: [],
+            tx: [],
+            rx: [],
+            cpu: [],
+            memory: []
+        };
+
+        const MAX_CHART_POINTS = 20;
+
+        // Initialize canvases
+        const charts = {
+            signal: document.getElementById('signal-chart'),
+            tx: document.getElementById('tx-chart'),
+            rx: document.getElementById('rx-chart'),
+            cpu: document.getElementById('cpu-chart'),
+            memory: document.getElementById('memory-chart')
+        };
+
+        // Set canvas sizes
+        Object.values(charts).forEach(canvas => {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        });
+
+        function drawSparkline(canvas, data, color = '#667eea') {
+            const ctx = canvas.getContext('2d');
+            const rect = canvas.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            if (data.length < 2) return;
+
+            const max = Math.max(...data);
+            const min = Math.min(...data);
+            const range = max - min || 1;
+
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+
+            data.forEach((value, index) => {
+                const x = (index / (data.length - 1)) * width;
+                const y = height - ((value - min) / range) * height;
+
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+
+            ctx.stroke();
+
+            // Add gradient fill
+            ctx.lineTo(width, height);
+            ctx.lineTo(0, height);
+            ctx.closePath();
+
+            const gradient = ctx.createLinearGradient(0, 0, 0, height);
+            gradient.addColorStop(0, color + '40');
+            gradient.addColorStop(1, color + '00');
+            ctx.fillStyle = gradient;
+            ctx.fill();
+        }
+
+        async function fetchMetrics() {
+            try {
+                const response = await fetch(`${API_BASE}/metrics`);
+                const data = await response.json();
+
+                if (data.error || data.message) {
+                    showError(data.error || data.message);
+                    return;
+                }
+
+                clearError();
+                updateMetrics(data);
+                updateCharts(data);
+
+            } catch (error) {
+                showError(`Failed to fetch metrics: ${error.message}`);
+            }
+        }
+
+        async function fetchStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/status`);
+                const data = await response.json();
+                updateStatus(data.status);
+            } catch (error) {
+                console.error('Failed to fetch status:', error);
+            }
+        }
+
+        async function fetchVerification() {
+            try {
+                const response = await fetch(`${API_BASE}/install_verify`);
+                const data = await response.json();
+                updateVerification(data);
+            } catch (error) {
+                console.error('Failed to fetch verification:', error);
+            }
+        }
+
+        function updateMetrics(data) {
+            document.getElementById('signal-strength').textContent = data.signal_strength_pct !== undefined ? data.signal_strength_pct : '--';
+            document.getElementById('tx-rate').textContent = data.out_rate !== undefined ? data.out_rate.toFixed(1) : '--';
+            document.getElementById('rx-rate').textContent = data.in_rate !== undefined ? data.in_rate.toFixed(1) : '--';
+            document.getElementById('cpu-usage').textContent = data.cpu_load !== undefined ? data.cpu_load.toFixed(1) : '--';
+            document.getElementById('memory-usage').textContent = data.mem_load !== undefined ? data.mem_load.toFixed(1) : '--';
+            document.getElementById('timestamp').textContent = data.ts || '--';
+            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        }
+
+        function updateCharts(data) {
+            // Add new data points
+            chartData.signal.push(data.signal_strength_pct || 0);
+            chartData.tx.push(data.out_rate || 0);
+            chartData.rx.push(data.in_rate || 0);
+            chartData.cpu.push(data.cpu_load || 0);
+            chartData.memory.push(data.mem_load || 0);
+
+            // Keep only last N points
+            Object.keys(chartData).forEach(key => {
+                if (chartData[key].length > MAX_CHART_POINTS) {
+                    chartData[key].shift();
+                }
+            });
+
+            // Draw charts
+            drawSparkline(charts.signal, chartData.signal, '#667eea');
+            drawSparkline(charts.tx, chartData.tx, '#48bb78');
+            drawSparkline(charts.rx, chartData.rx, '#4299e1');
+            drawSparkline(charts.cpu, chartData.cpu, '#ed8936');
+            drawSparkline(charts.memory, chartData.memory, '#f56565');
+        }
+
+        function updateStatus(status) {
+            const statusElement = document.getElementById('system-status');
+            const indicatorElement = document.getElementById('status-indicator');
+
+            statusElement.textContent = status.toUpperCase();
+            indicatorElement.className = `status-indicator ${status}`;
+        }
+
+        function updateVerification(data) {
+            const closureElement = document.getElementById('closure-readiness');
+            const verdictElement = document.getElementById('readiness-verdict');
+
+            closureElement.textContent = data.closure_readiness || '--';
+            closureElement.className = `verification-item-value ${data.closure_readiness === 'ready' ? 'ready' : 'not-ready'}`;
+
+            verdictElement.textContent = data.readiness_verdict || '--';
+            verdictElement.className = `verification-item-value ${data.readiness_verdict === 'PASS' ? 'ready' : 'not-ready'}`;
+
+            document.getElementById('dominant-factor').textContent = data.dominant_factor || '--';
+            document.getElementById('confidence').textContent = data.confidence ? data.confidence.toFixed(2) : '--';
+        }
+
+        function showError(message) {
+            const container = document.getElementById('error-container');
+            container.innerHTML = `<div class="error-message">${message}</div>`;
+        }
+
+        function clearError() {
+            document.getElementById('error-container').innerHTML = '';
+        }
+
+        // Initial fetch
+        fetchMetrics();
+        fetchStatus();
+        fetchVerification();
+
+        // Set up auto-refresh
+        setInterval(() => {
+            fetchMetrics();
+            fetchStatus();
+        }, REFRESH_INTERVAL);
+
+        // Refresh verification less frequently (every 10 seconds)
+        setInterval(fetchVerification, 10000);
+    </script>
+</body>
+
+</html>

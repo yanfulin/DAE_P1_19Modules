@@ -44,7 +44,7 @@ const FleetItem = ({ item, onPress }) => {
     );
 };
 
-export default function FleetView({ onNavigate }) {
+export default function FleetView({ onNavigate, onNavigateMetrics }) {
     const [fleet, setFleet] = useState([]);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -68,7 +68,12 @@ export default function FleetView({ onNavigate }) {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Project Fleet Board</Text>
+            <View style={styles.headerContainer}>
+                <Text style={styles.title}>Project Fleet Board</Text>
+                <TouchableOpacity style={styles.metricsButton} onPress={onNavigateMetrics}>
+                    <Text style={styles.metricsButtonText}>📊 Metrics</Text>
+                </TouchableOpacity>
+            </View>
             <FlatList
                 data={fleet}
                 keyExtractor={(item) => item.id}
@@ -85,11 +90,28 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#f5f5f5',
     },
+    headerContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
     title: {
         fontSize: 22,
         fontWeight: 'bold',
-        padding: 16,
         color: '#333'
+    },
+    metricsButton: {
+        backgroundColor: '#2196f3',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 8,
+    },
+    metricsButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
     },
     listContent: {
         paddingHorizontal: 16,

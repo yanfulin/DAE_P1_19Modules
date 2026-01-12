@@ -3,10 +3,11 @@ import { StyleSheet, SafeAreaView, Platform, StatusBar } from 'react-native';
 import FleetView from './components/FleetView';
 import DeviceDrilldown from './components/DeviceDrilldown';
 import ProofCard from './components/ProofCard';
+import MetricsView from './components/MetricsView';
 
 export default function App() {
 
-  const [currentScreen, setCurrentScreen] = useState('FLEET'); // FLEET, DRILLDOWN, PROOF
+  const [currentScreen, setCurrentScreen] = useState('FLEET'); // FLEET, DRILLDOWN, PROOF, METRICS
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
 
   const navigateToDrilldown = (deviceId) => {
@@ -19,12 +20,18 @@ export default function App() {
     setCurrentScreen('PROOF');
   };
 
+  const navigateToMetrics = () => {
+    setCurrentScreen('METRICS');
+  };
+
   const navigateBack = () => {
     if (currentScreen === 'PROOF') {
       setCurrentScreen('DRILLDOWN');
     } else if (currentScreen === 'DRILLDOWN') {
       setCurrentScreen('FLEET');
       setSelectedDeviceId(null);
+    } else if (currentScreen === 'METRICS') {
+      setCurrentScreen('FLEET');
     }
   };
 
@@ -32,7 +39,7 @@ export default function App() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       {currentScreen === 'FLEET' && (
-        <FleetView onNavigate={navigateToDrilldown} />
+        <FleetView onNavigate={navigateToDrilldown} onNavigateMetrics={navigateToMetrics} />
       )}
       {currentScreen === 'DRILLDOWN' && selectedDeviceId && (
         <DeviceDrilldown
@@ -46,6 +53,9 @@ export default function App() {
           deviceId={selectedDeviceId}
           onBack={navigateBack}
         />
+      )}
+      {currentScreen === 'METRICS' && (
+        <MetricsView onBack={navigateBack} />
       )}
     </SafeAreaView>
   );

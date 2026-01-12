@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, Button, ActivityIndicator } from 'react-native';
-import { fetchDeviceDetail } from '../src/api';
+import { fetchDeviceDetail, fetchMetrics } from '../src/api';
+import Svg, { Polyline } from 'react-native-svg';
 
 const Section = ({ title, children }) => (
     <View style={styles.section}>
@@ -12,6 +13,16 @@ const Section = ({ title, children }) => (
 export default function DeviceDrilldown({ deviceId, onNavigateProof, onBack }) {
     const [detail, setDetail] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [metrics, setMetrics] = useState(null);
+    const [chartData, setChartData] = useState({
+        signal: [],
+        tx: [],
+        rx: [],
+        cpu: [],
+        memory: []
+    });
+
+    const MAX_POINTS = 15;
 
     useEffect(() => {
         const load = async () => {
@@ -20,6 +31,42 @@ export default function DeviceDrilldown({ deviceId, onNavigateProof, onBack }) {
             setLoading(false);
         };
         load();
+    }, [deviceId]);
+
+    // Fetch metrics for local device
+    useEffect(() => {
+        if (deviceId !== 'local') return; // Only fetch metrics for local device
+
+        const loadMetrics = async () => {
+            const metricsData = await fetchMetrics();
+            if (metricsData) {
+                setMetrics(metricsData);
+
+                // Update chart data
+                setChartData(prev => {
+                    const newData = {
+                        signal: [...prev.signal, metricsData.signal_strength_pct || 0],
+                        tx: [...prev.tx, metricsData.out_rate || 0],
+                        rx: [...prev.rx, metricsData.in_rate || 0],
+                        cpu: [...prev.cpu, metricsData.cpu_load || 0],
+                        memory: [...prev.memory, metricsData.mem_load || 0]
+                    };
+
+                    // Keep only last MAX_POINTS
+                    Object.keys(newData).forEach(key => {
+                        if (newData[key].length > MAX_POINTS) {
+                            newData[key] = newData[key].slice(-MAX_POINTS);
+                        }
+                    });
+
+                    return newData;
+                });
+            }
+        };
+
+        loadMetrics();
+        const interval = setInterval(loadMetrics, 2000);
+        return () => clearInterval(interval);
     }, [deviceId]);
 
     if (loading) return <ActivityIndicator size="large" color="#2196f3" style={{ marginTop: 50 }} />;
@@ -93,6 +140,154 @@ export default function DeviceDrilldown({ deviceId, onNavigateProof, onBack }) {
                     </View>
                 </Section>
 
+                {/* Real-time Metrics - Only for local device */}
+                {deviceId === 'local' && metrics && (
+                    <Section title="Real-time Metrics">
+                        <View style={styles.metricsGrid}>
+                            {/* Signal Strength */}
+                            <View style={styles.metricCard}>
+                                <Text style={styles.metricLabel}>Signal Strength</Text>
+                                <View style={styles.metricValueRow}>
+                                    <Text style={[styles.metricValue, { color: '#667eea' }]}>
+                                        {metrics.signal_strength_pct ?? '--'}
+                                    </Text>
+                                    <Text style={styles.metricUnit}>%</Text>
+                                </View>
+                                {chartData.signal.length > 1 && (
+                                    <Svg width={280} height={40} style={styles.miniChart}>
+                                        <Polyline
+                                            points={chartData.signal.map((val, idx) => {
+                                                const max = Math.max(...chartData.signal);
+                                                const min = Math.min(...chartData.signal);
+                                                const range = max - min || 1;
+                                                const x = (idx / (chartData.signal.length - 1)) * 280;
+                                                const y = 40 - ((val - min) / range) * 40;
+                                                return `${x},${y}`;
+                                            }).join(' ')}
+                                            fill="none"
+                                            stroke="#667eea"
+                                            strokeWidth="2"
+                                        />
+                                    </Svg>
+                                )}
+                            </View>
+
+                            {/* TX Rate */}
+                            <View style={styles.metricCard}>
+                                <Text style={styles.metricLabel}>TX Rate</Text>
+                                <View style={styles.metricValueRow}>
+                                    <Text style={[styles.metricValue, { color: '#48bb78' }]}>
+                                        {metrics.out_rate ? metrics.out_rate.toFixed(1) : '--'}
+                                    </Text>
+                                    <Text style={styles.metricUnit}>Mbps</Text>
+                                </View>
+                                {chartData.tx.length > 1 && (
+                                    <Svg width={280} height={40} style={styles.miniChart}>
+                                        <Polyline
+                                            points={chartData.tx.map((val, idx) => {
+                                                const max = Math.max(...chartData.tx);
+                                                const min = Math.min(...chartData.tx);
+                                                const range = max - min || 1;
+                                                const x = (idx / (chartData.tx.length - 1)) * 280;
+                                                const y = 40 - ((val - min) / range) * 40;
+                                                return `${x},${y}`;
+                                            }).join(' ')}
+                                            fill="none"
+                                            stroke="#48bb78"
+                                            strokeWidth="2"
+                                        />
+                                    </Svg>
+                                )}
+                            </View>
+
+                            {/* RX Rate */}
+                            <View style={styles.metricCard}>
+                                <Text style={styles.metricLabel}>RX Rate</Text>
+                                <View style={styles.metricValueRow}>
+                                    <Text style={[styles.metricValue, { color: '#4299e1' }]}>
+                                        {metrics.in_rate ? metrics.in_rate.toFixed(1) : '--'}
+                                    </Text>
+                                    <Text style={styles.metricUnit}>Mbps</Text>
+                                </View>
+                                {chartData.rx.length > 1 && (
+                                    <Svg width={280} height={40} style={styles.miniChart}>
+                                        <Polyline
+                                            points={chartData.rx.map((val, idx) => {
+                                                const max = Math.max(...chartData.rx);
+                                                const min = Math.min(...chartData.rx);
+                                                const range = max - min || 1;
+                                                const x = (idx / (chartData.rx.length - 1)) * 280;
+                                                const y = 40 - ((val - min) / range) * 40;
+                                                return `${x},${y}`;
+                                            }).join(' ')}
+                                            fill="none"
+                                            stroke="#4299e1"
+                                            strokeWidth="2"
+                                        />
+                                    </Svg>
+                                )}
+                            </View>
+
+                            {/* CPU Usage */}
+                            <View style={styles.metricCard}>
+                                <Text style={styles.metricLabel}>CPU Usage</Text>
+                                <View style={styles.metricValueRow}>
+                                    <Text style={[styles.metricValue, { color: '#ed8936' }]}>
+                                        {metrics.cpu_load ? metrics.cpu_load.toFixed(1) : '--'}
+                                    </Text>
+                                    <Text style={styles.metricUnit}>%</Text>
+                                </View>
+                                {chartData.cpu.length > 1 && (
+                                    <Svg width={280} height={40} style={styles.miniChart}>
+                                        <Polyline
+                                            points={chartData.cpu.map((val, idx) => {
+                                                const max = Math.max(...chartData.cpu);
+                                                const min = Math.min(...chartData.cpu);
+                                                const range = max - min || 1;
+                                                const x = (idx / (chartData.cpu.length - 1)) * 280;
+                                                const y = 40 - ((val - min) / range) * 40;
+                                                return `${x},${y}`;
+                                            }).join(' ')}
+                                            fill="none"
+                                            stroke="#ed8936"
+                                            strokeWidth="2"
+                                        />
+                                    </Svg>
+                                )}
+                            </View>
+
+                            {/* Memory Usage */}
+                            <View style={styles.metricCard}>
+                                <Text style={styles.metricLabel}>Memory Usage</Text>
+                                <View style={styles.metricValueRow}>
+                                    <Text style={[styles.metricValue, { color: '#f56565' }]}>
+                                        {metrics.mem_load ? metrics.mem_load.toFixed(1) : '--'}
+                                    </Text>
+                                    <Text style={styles.metricUnit}>%</Text>
+                                </View>
+                                {chartData.memory.length > 1 && (
+                                    <Svg width={280} height={40} style={styles.miniChart}>
+                                        <Polyline
+                                            points={chartData.memory.map((val, idx) => {
+                                                const max = Math.max(...chartData.memory);
+                                                const min = Math.min(...chartData.memory);
+                                                const range = max - min || 1;
+                                                const x = (idx / (chartData.memory.length - 1)) * 280;
+                                                const y = 40 - ((val - min) / range) * 40;
+                                                return `${x},${y}`;
+                                            }).join(' ')}
+                                            fill="none"
+                                            stroke="#f56565"
+                                            strokeWidth="2"
+                                        />
+                                    </Svg>
+                                )}
+                            </View>
+                        </View>
+                        <Text style={styles.metricsNote}>Updates every 2 seconds</Text>
+                    </Section>
+                )}
+
                 <View style={{ marginTop: 24, marginBottom: 40 }}>
                     <Button title="Generate Proof Card" onPress={() => onNavigateProof(deviceId)} color="#673ab7" />
                 </View>
@@ -157,5 +352,48 @@ const styles = StyleSheet.create({
         alignItems: 'center'
     },
     verdictTitle: { fontSize: 24, fontWeight: '900' },
-    missingItem: { color: '#d32f2f', fontSize: 12, marginTop: 2 }
+    missingItem: { color: '#d32f2f', fontSize: 12, marginTop: 2 },
+
+    // Metrics styles
+    metricsGrid: {
+        gap: 12,
+    },
+    metricCard: {
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 8,
+    },
+    metricLabel: {
+        fontSize: 11,
+        color: '#888',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 4,
+        fontWeight: '500',
+    },
+    metricValueRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        marginBottom: 8,
+    },
+    metricValue: {
+        fontSize: 24,
+        fontWeight: '700',
+        marginRight: 6,
+    },
+    metricUnit: {
+        fontSize: 12,
+        color: '#666',
+    },
+    miniChart: {
+        marginTop: 4,
+    },
+    metricsNote: {
+        fontSize: 11,
+        color: '#999',
+        textAlign: 'center',
+        marginTop: 8,
+        fontStyle: 'italic',
+    },
 });

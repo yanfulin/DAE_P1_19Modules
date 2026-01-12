@@ -40,6 +40,7 @@ class TimelineBuilder:
                     "snapshot_ref_id": s.snapshot_ref_id,
                     "snapshot_scope": s.snapshot_scope,
                     "snapshot_digest": s.snapshot_digest,
+                    "snapshot_type": s.snapshot_type,
                     "readable_fields": s.readable_fields
                 } for s in snapshots
             ]

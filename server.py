@@ -6,6 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 # from dae_p1.adapters.demo_adapter import DemoAdapter
 from dae_p1.adapters.windows_wifi_adapter import WindowsWifiAdapter
 from dae_p1.core_service import OBHCoreService, CoreRuntimeConfig
+from dae_p1.M20_install_verify import verify_install
+from dae_p1.status_helper import calculate_simple_status
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -111,6 +114,185 @@ def get_recognition():
         return rec
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+@app.get("/install_verify")
+def get_install_verify():
+    """Trigger installation verification (closure readiness)."""
+    if not core:
+        return {"error": "Core not initialized"}
+    
+    # Get all available metrics from the buffer to form the window
+    metrics_snapshot = core.metrics_buf.snapshot()
+    
+    # Run verification (defaults to 3 minute window inside the function)
+    result = verify_install(metrics_snapshot)
+    
+    return result
+
+@app.get("/status")
+def get_status():
+    """Get the simple status (ok/unstable/suspected/investigation)."""
+    if not core:
+        return {"status": "starting"}
+    
+    s = calculate_simple_status(core)
+    return {"status": s}
+
+# Execution block moved to end of file
+    
+# --- MOCK FLEET SERVICE ---
+
+def _get_local_status():
+    if not core:
+        return "unknown"
+    return calculate_simple_status(core)
+
+def _get_mock_fleet():
+    """Generate a mixed list of real and mock devices."""
+    local_status = _get_local_status()
+    
+    # Real Device
+    real_device = {
+        "id": "local",
+        "name": "Local CPE (Real)",
+        "current_state": local_status,
+        "primary_issue_class": "Wi-Fi Coverage" if local_status != "ok" else "None",
+        "closure_readiness": "READY" if local_status == "ok" else "NOT_READY",
+        "last_change_ref": "T-5m",
+        "feature_deltas": ["BandSteering: OFF"] if local_status == "unstable" else []
+    }
+
+    # Mock Devices
+    mock_devices = [
+        {
+            "id": "mock_1",
+            "name": "Living Room Mesh",
+            "current_state": "suspected",
+            "primary_issue_class": "Backhaul Flapping",
+            "closure_readiness": "NOT_READY",
+            "last_change_ref": "T-2h",
+            "feature_deltas": ["DFS: Frozen"]
+        },
+        {
+            "id": "mock_2",
+            "name": "Bedroom Extender",
+            "current_state": "ok",
+            "primary_issue_class": "None",
+            "closure_readiness": "READY",
+            "last_change_ref": "T-1d",
+            "feature_deltas": []
+        },
+         {
+            "id": "mock_3",
+            "name": "Guest Router",
+            "current_state": "investigating",
+            "primary_issue_class": "WAN Latency",
+            "closure_readiness": "NOT_READY",
+            "last_change_ref": "T-15m",
+            "feature_deltas": ["QoS: Downgraded"]
+        }
+    ]
+    
+    return [real_device] + mock_devices
+
+@app.get("/fleet")
+def get_fleet_view():
+    """Get the list of all devices in the fleet (1 real + N mock)."""
+    return _get_mock_fleet()
+
+@app.get("/device/{device_id}")
+def get_device_detail(device_id: str):
+    """Get detailed drilldown info for a device."""
+    
+    # Local Device (Real-ish Data)
+    if device_id == "local":
+        local_status = _get_local_status()
+        
+        # We can pull real snapshots if available, or mock them if empty
+        snapshots = []
+        if core:
+            snaps = core.snaps_buf.snapshot()
+            # Convert to simplified format for UI
+            formatted_snaps = []
+            for s in snaps[-5:]: # Last 5
+                formatted_snaps.append({
+                    "ref": f"S-{s.ts}",
+                    "type": s.trigger,
+                    "time": s.ts
+                })
+            snapshots = formatted_snaps
+        
+        if not snapshots:
+            snapshots = [
+                {"ref": "S-100", "type": "post-install", "time": 1000},
+                {"ref": "S-105", "type": "periodic", "time": 1050}
+            ]
+
+        return {
+            "id": "local",
+            "obh_snapshot_timeline": snapshots,
+            "cohort_compare": {
+                "status": "normal", # normal / outlier
+                "message": "Behaving as expected for Model X v2.1"
+            },
+            "feature_ledger": [
+                {"feature": "BandSteering", "state": "ON", "reason": "Default", "ttl": None},
+                {"feature": "DFS", "state": "ON", "reason": "Default", "ttl": None}
+            ],
+            "compliance_verdict": {
+                "result": "PASS" if local_status == "ok" else "FAIL",
+                "evidence_missing": []
+            }
+        }
+
+    # Mock Device 1 (Suspected)
+    elif device_id == "mock_1":
+        return {
+            "id": "mock_1",
+            "obh_snapshot_timeline": [
+                {"ref": "S-800", "type": "post-install", "time": 800},
+                {"ref": "S-1200", "type": "pre-incident", "time": 1200},
+                {"ref": "S-1210", "type": "post-incident", "time": 1210}
+            ],
+            "cohort_compare": {
+                "status": "outlier",
+                "message": "High flap rate compared to cohort (Top 5%)"
+            },
+            "feature_ledger": [
+                 {"feature": "BandSteering", "state": "OFF", "reason": "Stability logic", "ttl": "2h remaining"},
+                 {"feature": "DFS", "state": "FROZEN", "reason": "Radar detected", "ttl": "30m remaining"}
+            ],
+            "compliance_verdict": {
+                "result": "FAIL",
+                "evidence_missing": ["Pcap dump for recent flap"]
+            }
+        }
+        
+    # Default Mock
+    return {
+         "id": device_id,
+         "obh_snapshot_timeline": [],
+         "cohort_compare": {"status": "normal", "message": "No data"},
+         "feature_ledger": [],
+         "compliance_verdict": {"result": "PASS", "evidence_missing": []}
+    }
+
+@app.get("/device/{device_id}/proof")
+def get_device_proof(device_id: str):
+    """Get the Proof Card summary."""
+    # Reuse getting detail to construct the card
+    detail = get_device_detail(device_id)
+    
+    # Construct card
+    return {
+        "title": f"Proof Card - {device_id}",
+        "timestamp": "Now",
+        "trigger_summary": detail["cohort_compare"]["message"],
+        "snapshot_refs": [s["ref"] for s in detail["obh_snapshot_timeline"]],
+        "feature_ledger_summary": f"{len(detail['feature_ledger'])} features tracked",
+        "closure_readiness": "READY" if detail["compliance_verdict"]["result"] == "PASS" else "NOT_READY",
+        "vendor_compliance_verdict": detail["compliance_verdict"]["result"]
+    }
 
 if __name__ == "__main__":
     import uvicorn

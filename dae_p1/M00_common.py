@@ -70,6 +70,7 @@ class PreChangeSnapshot:
     snapshot_scope: str
     capture_time: float
     snapshot_digest: str
+    snapshot_type: str = "periodic"
     readable_fields: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass

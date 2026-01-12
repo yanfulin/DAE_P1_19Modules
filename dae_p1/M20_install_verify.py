@@ -10,6 +10,7 @@ class InstallVerificationResult:
     verify_window_sec: int
     sample_count: int
     readiness_verdict: str  # PASS / MARGINAL / FAIL
+    closure_readiness: str  # ready / not_ready
     dominant_factor: str    # WAN / WIFI / MESH / OPAQUE / UNKNOWN
     confidence: float       # 0..1
     fp_vector: Dict[str, float]
@@ -41,7 +42,7 @@ def verify_install(samples: List[MetricSample],
     Default: 3 minutes.
     """
     if not samples:
-        return InstallVerificationResult(verify_window_sec, 0, "FAIL", "UNKNOWN", 0.2, {})
+        return InstallVerificationResult(verify_window_sec, 0, "FAIL", "not_ready", "UNKNOWN", 0.2, {})
 
     end_ts = samples[-1].ts
     start_ts = end_ts - verify_window_sec
@@ -83,6 +84,7 @@ def verify_install(samples: List[MetricSample],
         verify_window_sec=verify_window_sec,
         sample_count=len(window),
         readiness_verdict=verdict,
+        closure_readiness="ready" if verdict == "PASS" else "not_ready",
         dominant_factor=dominant,
         confidence=conf,
         fp_vector=v

@@ -21,6 +21,7 @@ class WindowsWifiAdapter(DomainAdapter):
         self.collector = MetricsCollector(self.windowing)
         self.last_net_io = psutil.net_io_counters()
         self.last_time = time.time()
+        self.last_signal = None  # Track last signal for event generation
         self._last_evs = []
         self._last_snaps = []
 
@@ -95,7 +96,7 @@ class WindowsWifiAdapter(DomainAdapter):
         lat, jit = self._get_ping_stats()
 
         # Collect
-        return self.collector.collect(
+        ms = self.collector.collect(
             latency_p95_ms=lat,
             retry_pct=0.0,
             airtime_busy_pct=0.0,
@@ -106,7 +107,52 @@ class WindowsWifiAdapter(DomainAdapter):
             signal_strength_pct=signal,
             jitter_ms=jit
         )
+        
+        # Store for event generation in next call (or same tick if we want strict sync, but adapter pattern separates them)
+        # Actually proper place is to update last_signal after checking events, but here we only have local state.
+        # Let's do it in collect_change_events_and_snapshots using the value cached or passed?
+        # The interface separates collect_metric_sample and collect_change_events.
+        # So we should probably store 'current_signal' in self to access it in collect_change_events.
+        # For simplicity, we can rely on what we just collected.
+        self._current_signal = signal
+        return ms
 
     def collect_change_events_and_snapshots(self) -> Tuple[List[ChangeEventCard], List[PreChangeSnapshot]]:
-        # Currently no real event monitoring implemented
-        return [], []
+        events = []
+        
+        current_sig = getattr(self, '_current_signal', 0)
+        
+        # Initialize if first run
+        if self.last_signal is None:
+            self.last_signal = current_sig
+            # Optionally record a "startup" event?
+            # events.append(self.event_logger.record("adapter_startup", origin_hint="windows", target_scope="wifi"))
+        
+        diff = current_sig - self.last_signal
+        
+        # Threshold: report if signal changes by more than 5%
+        if abs(diff) > 5:
+            # It's a change!
+            direction = "improved" if diff > 0 else "degraded"
+            
+            # We don't have self.event_logger here (it was in DOCSIS adapter but not initialized here)
+            # Let's add it or construct ChangeEventCard manually.
+            # BaseAdapter doesn't enforce event_logger, but it's good practice.
+            # M00Common imports are available.
+            
+            # Helper to make card
+            card = ChangeEventCard(
+                event_time=time.time(),
+                event_type=f"signal_{direction}",
+                origin_hint="windows_wifi",
+                trigger="signal_threshold",
+                target_scope="wifi",
+                change_ref=f"sig:{self.last_signal}->{current_sig}",
+                window_ref=self.windowing.window_ref(time.time(), "Wl") # simple current window
+            )
+            events.append(card)
+            
+            # Update last
+            self.last_signal = current_sig
+            
+        return events, []

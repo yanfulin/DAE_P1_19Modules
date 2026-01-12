@@ -19,6 +19,13 @@ class DemoSimulator:
         self.snaps = SnapshotManager()
 
     def generate_step(self, t: int) -> Tuple[dict, List, List]:
+        # t=0: Emulated post-install state
+        m_evs = []
+        m_snaps = []
+        if t == 0:
+             snap = self.snaps.create_pre_change("wlan", {"channel": 36, "bandwidth": 80, "steering_enabled": True}, snapshot_type="post-install")
+             m_snaps.append(snap)
+
         # Simulate a baseline then an incident around t in [20, 40]
         if 20 <= t <= 40:
             latency = random.uniform(80, 140)
@@ -40,7 +47,11 @@ class DemoSimulator:
         snaps = []
         # Occasionally emit a change event (sometimes missing refs)
         if t in (18, 22, 28, 35):
-            snap = self.snaps.create_pre_change("wlan", {"channel": 36, "bandwidth": 80, "steering_enabled": True})
+            stype = "periodic"
+            if t == 18: stype = "pre-incident"
+            if t == 35: stype = "post-incident"
+            
+            snap = self.snaps.create_pre_change("wlan", {"channel": 36, "bandwidth": 80, "steering_enabled": True}, snapshot_type=stype)
             snaps.append(snap)
             if t == 28:
                 # opaque-like: missing change_ref and unknown origin
@@ -48,5 +59,8 @@ class DemoSimulator:
             else:
                 ev = self.events.record("policy_update", origin_hint="cloud", target_scope="wlan", change_ref=f"pol-{t}")
             evs.append(ev)
+
+        evs.extend(m_evs)
+        snaps.extend(m_snaps)
 
         return m, evs, snaps

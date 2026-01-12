@@ -7,6 +7,7 @@
     "verify_window_sec",
     "sample_count",
     "readiness_verdict",
+    "closure_readiness",
     "dominant_factor",
     "confidence",
     "fp_vector"
@@ -26,6 +27,13 @@
         "PASS",
         "MARGINAL",
         "FAIL"
+      ]
+    },
+    "closure_readiness": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "not_ready"
       ]
     },
     "dominant_factor": {

@@ -1,4 +1,7 @@
 jsonschema
+<<<<<<< HEAD
 fastapi
 uvicorn
 psutil
+=======
+>>>>>>> origin/main

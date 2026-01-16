@@ -470,6 +470,27 @@ def simulate_incident(type: str = "latency", duration: int = 30):
         
     return {"status": "Simulating", "type": type, "duration": duration, "overrides": str(core.adapter.overrides)}
 
+@app.post("/obh/trigger")
+def trigger_obh():
+    """
+    Trigger One-Button Help export manually.
+    """
+    if not core:
+        return {"error": "Core not initialized"}
+    
+    try:
+        # Export to current directory or a 'bundles' subdir
+        import os
+        os.makedirs("bundles", exist_ok=True)
+        res = core.obh_export("bundles")
+        return {
+            "status": "Exported",
+            "episode_id": res.episode_id,
+            "path": res.exported_path
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
 if __name__ == "__main__":
     import uvicorn
     # Listen on all interfaces to allow access from Simulator/External devices

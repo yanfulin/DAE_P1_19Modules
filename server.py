@@ -486,7 +486,8 @@ def trigger_obh():
         return {
             "status": "Exported",
             "episode_id": res.episode_id,
-            "path": res.exported_path
+            "path": res.exported_path,
+            "bundle": res.bundle_content
         }
     except Exception as e:
         return {"error": str(e)}

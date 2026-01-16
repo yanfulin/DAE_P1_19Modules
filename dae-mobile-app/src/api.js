@@ -91,3 +91,27 @@ export const fetchProofData = async (deviceId) => {
         return null;
     }
 };
+
+export const simulateIncident = async (type, duration) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/simulate/incident?type=${type}&duration=${duration}`, {
+            method: 'POST'
+        });
+        return await response.json();
+    } catch (error) {
+        console.error("Error simulating incident:", error);
+        return null;
+    }
+};
+
+export const triggerOBH = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/obh/trigger`, {
+            method: 'POST'
+        });
+        return await response.json();
+    } catch (error) {
+        console.error("Error triggering OBH:", error);
+        return null;
+    }
+};

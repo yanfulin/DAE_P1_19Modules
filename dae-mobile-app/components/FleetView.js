@@ -44,7 +44,7 @@ const FleetItem = ({ item, onPress }) => {
     );
 };
 
-export default function FleetView({ onNavigate, onNavigateMetrics }) {
+export default function FleetView({ onNavigate, onNavigateMetrics, onNavigateModules }) {
     const [fleet, setFleet] = useState([]);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -72,6 +72,9 @@ export default function FleetView({ onNavigate, onNavigateMetrics }) {
                 <Text style={styles.title}>Project Fleet Board</Text>
                 <TouchableOpacity style={styles.metricsButton} onPress={onNavigateMetrics}>
                     <Text style={styles.metricsButtonText}>📊 Metrics</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.metricsButton, { marginLeft: 8, backgroundColor: '#607D8B' }]} onPress={onNavigateModules}>
+                    <Text style={styles.metricsButtonText}>📦 Modules</Text>
                 </TouchableOpacity>
             </View>
             <FlatList

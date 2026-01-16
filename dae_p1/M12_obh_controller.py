@@ -10,6 +10,7 @@ from .M11_bundle_exporter import BundleExporter
 class OBHResult:
     episode_id: str
     exported_path: str
+    bundle_content: Optional[Dict[str, Any]] = None
 
 class OBHController:
     """
@@ -19,6 +20,7 @@ class OBHController:
     def __init__(self, timeline_builder: TimelineBuilder, exporter: BundleExporter):
         self.timeline_builder = timeline_builder
         self.exporter = exporter
+        self.last_result: Optional[OBHResult] = None
 
     def run(self, out_dir: str, recognition: EpisodeRecognition,
             metrics, events, snapshots) -> OBHResult:
@@ -40,4 +42,6 @@ class OBHController:
             "timeline": timeline
         }
         path = self.exporter.export(out_dir, recognition.episode_id, bundle)
-        return OBHResult(episode_id=recognition.episode_id, exported_path=path)
+        res = OBHResult(episode_id=recognition.episode_id, exported_path=path, bundle_content=bundle)
+        self.last_result = res
+        return res

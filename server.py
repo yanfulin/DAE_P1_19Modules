@@ -139,6 +139,120 @@ def get_status():
     return {"status": s}
 
 # Execution block moved to end of file
+
+@app.get("/modules")
+def get_modules_status():
+    """Get status of all 19 modules."""
+    if not core:
+        return {"error": "Core not initialized"}
+    
+    modules = []
+    
+    # helper
+    def add_mod(id, name, status, data):
+        modules.append({
+            "id": id,
+            "name": name,
+            "status": status,
+            "data": data
+        })
+
+    # M00 Common
+    add_mod("M00", "Common", "Active", {"note": "Shared data structures"})
+
+    # M01 Windowing
+    ws_ref, wl_ref = core.windowing.current_refs()
+    m01_data = {
+        "current_refs": {"Ws": ws_ref, "Wl": wl_ref},
+        "policy": {"ws_sec": core.windowing.policy.ws_sec, "wl_sec": core.windowing.policy.wl_sec}
+    }
+    add_mod("M01", "Windowing", "Active", m01_data)
+
+    # M02 Ring Buffer (Metrics)
+    m_buf_len = len(core.metrics_buf.snapshot())
+    add_mod("M02", "RingBuffer", "Active", {"metrics_count": m_buf_len, "capacity": core.metrics_buf._dq.maxlen})
+
+    # M03 Collector
+    from dataclasses import asdict
+    from dae_p1.M00_common import iso
+    last_m = core.metrics_buf.last()
+    m03_data = {}
+    if last_m:
+        m03_data = asdict(last_m)
+        # Format TS for readability
+        m03_data['ts_iso'] = iso(last_m.ts)
+    else:
+        m03_data = {"status": "No samples yet"}
+        
+    add_mod("M03", "MetricsCollector", "Active", m03_data)
+
+    # M04 Change Logger
+    e_buf_len = len(core.events_buf.snapshot())
+    add_mod("M04", "ChangeLogger", "Active", {"events_count": e_buf_len})
+
+    # M05 Snapshot Manager
+    s_buf_len = len(core.snaps_buf.snapshot())
+    add_mod("M05", "SnapshotManager", "Active", {"snapshots_count": s_buf_len})
+
+    # M06 Observability
+    # Just dry-run a check
+    obs_res = core.recognition.obs.check_no_change_event()
+    add_mod("M06", "ObservabilityChecker", "Active", {"opaque_risk": obs_res.opaque_risk})
+
+    # M07 Incident Detector
+    # Run on latest
+    if last_m:
+        is_bad, flags = core.recognition.detector.is_bad_window(last_m)
+        add_mod("M07", "IncidentDetector", "Active", {"is_bad_window": is_bad, "flags": flags})
+    else:
+        add_mod("M07", "IncidentDetector", "Waiting", {"msg": "No metrics"})
+
+    # M08 Verdict Classifier
+    add_mod("M08", "VerdictClassifier", "Ready", {"mode": "Heuristic"})
+
+    # M09 Episode Manager
+    ep_count = 1 if core.recognition.episodes.current else 0
+    add_mod("M09", "EpisodeManager", "Active", {"episodes_tracked": ep_count})
+
+    # M10 Timeline
+    add_mod("M10", "TimelineBuilder", "Ready", {"ready_for_export": True})
+
+    # M11 Exporter
+    add_mod("M11", "BundleExporter", "Ready", {"format": "JSON spec 1.0"})
+
+    # M12 OBH Controller
+    m12_data = {"status": "Idle"}
+    if core.obh.last_result:
+        m12_data = {
+            "status": "Has Result",
+            "last_episode": core.obh.last_result.episode_id,
+            "path": core.obh.last_result.exported_path,
+            "bundle": core.obh.last_result.bundle_content
+        }
+    add_mod("M12", "OBHController", "Ready", m12_data)
+
+    # M13 fp_lite
+    add_mod("M13", "fp_lite", "Offline", {"note": "Use M15 CLI"})
+
+    # M14 Bundle Reader
+    add_mod("M14", "BundleReader", "Offline", {"note": "Library"})
+
+    # M15 CLI
+    add_mod("M15", "CLI_Offline_FP", "Offline", {"note": "Run via terminal"})
+
+    # M16 Recognition Engine
+    add_mod("M16", "RecognitionEngine", "Active", {"integrated": True})
+
+    # M17 Demo
+    add_mod("M17", "DemoSimulator", "Active", {"running": True})
+
+    # M18 Notes
+    add_mod("M18", "AppIntegration", "Info", {"doc": "See M18_app_integration_notes.md"})
+
+    # M19 Readme
+    add_mod("M19", "Readme", "Info", {"doc": "See M19_readme.md"})
+
+    return modules
     
 # --- MOCK FLEET SERVICE ---
 
@@ -330,6 +444,31 @@ def get_device_proof(device_id: str):
         "closure_readiness": "READY" if detail["compliance_verdict"]["result"] == "PASS" else "NOT_READY",
         "vendor_compliance_verdict": detail["compliance_verdict"]["result"]
     }
+
+@app.post("/simulate/incident")
+def simulate_incident(type: str = "latency", duration: int = 30):
+    """
+    Simulate an incident by injecting bad metrics into the adapter.
+    Type can be: latency, retry, airtime, complex.
+    """
+    if not core:
+        return {"error": "Core not initialized"}
+    
+    import time
+    until = time.time() + duration
+    
+    if type == "latency":
+        core.adapter.overrides['latency'] = {"value": 150.0, "until": until} # > 60
+    elif type == "retry":
+        core.adapter.overrides['retry_pct'] = {"value": 25.0, "until": until} # > 18
+    elif type == "airtime":
+        core.adapter.overrides['airtime_busy_pct'] = {"value": 85.0, "until": until} # > 75
+    elif type == "complex":
+        # Multi-factor
+        core.adapter.overrides['latency'] = {"value": 120.0, "until": until}
+        core.adapter.overrides['retry_pct'] = {"value": 20.0, "until": until}
+        
+    return {"status": "Simulating", "type": type, "duration": duration, "overrides": str(core.adapter.overrides)}
 
 if __name__ == "__main__":
     import uvicorn

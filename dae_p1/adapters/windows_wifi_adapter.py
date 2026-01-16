@@ -24,6 +24,7 @@ class WindowsWifiAdapter(DomainAdapter):
         self.last_signal = None  # Track last signal for event generation
         self._last_evs = []
         self._last_snaps = []
+        self.overrides = {} # For simulation injection
 
     def _get_signal_strength(self) -> int:
         try:
@@ -95,11 +96,30 @@ class WindowsWifiAdapter(DomainAdapter):
         # Tick rate is 1s, ping -n 2 takes ~20ms + timeout. Should be fine.
         lat, jit = self._get_ping_stats()
 
+        # Check for overrides (Simulation)
+        if self.overrides:
+            now = time.time()
+            # Remove expired
+            expired = [k for k, v in self.overrides.items() if v.get('until', 0) < now]
+            for k in expired:
+                del self.overrides[k]
+                
+            # Apply active
+            if 'latency' in self.overrides: lat = self.overrides['latency']['value']
+            if 'jitter' in self.overrides: jit = self.overrides['jitter']['value']
+            # Only override collected values or inject new ones?
+            # We inject new ones into collector below.
+            
         # Collect
+        # Helper to get override or actual
+        def get_val(key, default):
+            if key in self.overrides: return self.overrides[key]['value']
+            return default
+
         ms = self.collector.collect(
-            latency_p95_ms=lat,
-            retry_pct=0.0,
-            airtime_busy_pct=0.0,
+            latency_p95_ms=lat, # Already handled above or can be re-handled
+            retry_pct=get_val('retry_pct', 0.0), # Default 0
+            airtime_busy_pct=get_val('airtime_busy_pct', 0.0), # Default 0
             in_rate=in_rate_mbps,
             out_rate=out_rate_mbps,
             cpu_load=cpu,

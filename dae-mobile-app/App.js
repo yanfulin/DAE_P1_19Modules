@@ -4,6 +4,7 @@ import FleetView from './components/FleetView';
 import DeviceDrilldown from './components/DeviceDrilldown';
 import ProofCard from './components/ProofCard';
 import MetricsView from './components/MetricsView';
+import ModuleInspector from './components/ModuleInspector';
 
 export default function App() {
 
@@ -24,6 +25,10 @@ export default function App() {
     setCurrentScreen('METRICS');
   };
 
+  const navigateToModules = () => {
+    setCurrentScreen('MODULES');
+  };
+
   const navigateBack = () => {
     if (currentScreen === 'PROOF') {
       setCurrentScreen('DRILLDOWN');
@@ -32,6 +37,8 @@ export default function App() {
       setSelectedDeviceId(null);
     } else if (currentScreen === 'METRICS') {
       setCurrentScreen('FLEET');
+    } else if (currentScreen === 'MODULES') {
+      setCurrentScreen('FLEET');
     }
   };
 
@@ -39,7 +46,7 @@ export default function App() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       {currentScreen === 'FLEET' && (
-        <FleetView onNavigate={navigateToDrilldown} onNavigateMetrics={navigateToMetrics} />
+        <FleetView onNavigate={navigateToDrilldown} onNavigateMetrics={navigateToMetrics} onNavigateModules={navigateToModules} />
       )}
       {currentScreen === 'DRILLDOWN' && selectedDeviceId && (
         <DeviceDrilldown
@@ -56,6 +63,9 @@ export default function App() {
       )}
       {currentScreen === 'METRICS' && (
         <MetricsView onBack={navigateBack} />
+      )}
+      {currentScreen === 'MODULES' && (
+        <ModuleInspector onBack={navigateBack} />
       )}
     </SafeAreaView>
   );

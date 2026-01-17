@@ -13,9 +13,10 @@ class DemoAdapter(DomainAdapter):
     def __init__(self):
         self.sim = DemoSimulator()
         self.t = 0
+        self.overrides = {}
 
     def collect_metric_sample(self) -> MetricSample:
-        m, evs, snaps = self.sim.generate_step(self.t)
+        m, evs, snaps = self.sim.generate_step(self.t, self.overrides)
         self._last_evs = evs
         self._last_snaps = snaps
         self.t += 1

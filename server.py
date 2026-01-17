@@ -3,8 +3,8 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-# from dae_p1.adapters.demo_adapter import DemoAdapter
-from dae_p1.adapters.windows_wifi_adapter import WindowsWifiAdapter
+from dae_p1.adapters.demo_adapter import DemoAdapter
+# from dae_p1.adapters.windows_wifi_adapter import WindowsWifiAdapter
 from dae_p1.core_service import OBHCoreService, CoreRuntimeConfig
 from dae_p1.M20_install_verify import verify_install
 from dae_p1.status_helper import calculate_simple_status
@@ -35,8 +35,8 @@ async def run_core_loop():
 async def lifespan(app: FastAPI):
     # Startup
     global adapter, core, background_task
-    logger.info("Initializing Core Service with WindowsWifiAdapter...")
-    adapter = WindowsWifiAdapter()
+    logger.info("Initializing Core Service with DemoAdapter...")
+    adapter = DemoAdapter()
     
     # Use accelerate=True so it doesn't sleep internally, we control loop with asyncio
     cfg = CoreRuntimeConfig(sample_interval_sec=1, buffer_minutes=60, accelerate=True)
@@ -195,8 +195,13 @@ def get_modules_status():
     add_mod("M05", "SnapshotManager", "Active", {"snapshots_count": s_buf_len})
 
     # M06 Observability
-    # Just dry-run a check
-    obs_res = core.recognition.obs.check_no_change_event()
+    # Check the latest event if available, otherwise check no-event state
+    last_evt = core.events_buf.last()
+    if last_evt:
+        obs_res = core.recognition.obs.check_event(last_evt)
+    else:
+        obs_res = core.recognition.obs.check_no_change_event()
+        
     add_mod("M06", "ObservabilityChecker", "Active", {"opaque_risk": obs_res.opaque_risk})
 
     # M07 Incident Detector
@@ -445,7 +450,7 @@ def get_device_proof(device_id: str):
         "vendor_compliance_verdict": detail["compliance_verdict"]["result"]
     }
 
-@app.post("/simulate/incident")
+@app.api_route("/simulate/incident", methods=["GET", "POST"])
 def simulate_incident(type: str = "latency", duration: int = 30):
     """
     Simulate an incident by injecting bad metrics into the adapter.
@@ -470,7 +475,7 @@ def simulate_incident(type: str = "latency", duration: int = 30):
         
     return {"status": "Simulating", "type": type, "duration": duration, "overrides": str(core.adapter.overrides)}
 
-@app.post("/obh/trigger")
+@app.api_route("/obh/trigger", methods=["GET", "POST"])
 def trigger_obh():
     """
     Trigger One-Button Help export manually.

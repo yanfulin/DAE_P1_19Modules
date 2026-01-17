@@ -18,7 +18,9 @@ class DemoSimulator:
         self.events = ChangeEventLogger(self.windowing, VersionRefs(fw="fw1.0", driver="drv1.0"))
         self.snaps = SnapshotManager()
 
-    def generate_step(self, t: int) -> Tuple[dict, List, List]:
+    def generate_step(self, t: int, overrides: dict = None) -> Tuple[dict, List, List]:
+        if overrides is None: overrides = {}
+
         # t=0: Emulated post-install state
         m_evs = []
         m_snaps = []
@@ -39,6 +41,15 @@ class DemoSimulator:
             airtime = random.uniform(20, 60)
             flap = random.randint(0, 1)
             sinr = random.uniform(8, 18)
+
+        # Apply overrides
+        now = time.time()
+        if 'latency' in overrides and now < overrides['latency']['until']:
+            latency = overrides['latency']['value']
+        if 'retry_pct' in overrides and now < overrides['retry_pct']['until']:
+            retry = overrides['retry_pct']['value']
+        if 'airtime_busy_pct' in overrides and now < overrides['airtime_busy_pct']['until']:
+            airtime = overrides['airtime_busy_pct']['value']
 
         m = self.collector.collect(latency_p95_ms=latency, retry_pct=retry, airtime_busy_pct=airtime,
                                    mesh_flap_count=flap, wan_sinr_db=sinr)

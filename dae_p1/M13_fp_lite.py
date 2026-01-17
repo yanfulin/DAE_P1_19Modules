@@ -41,16 +41,52 @@ def fp_lite_from_bundle(bundle: Dict[str, Any]) -> Dict[str, Any]:
     n = len(pts)
     if n < 6:
         return {"error":"insufficient_points"}
-    # Split into thirds: before/during/after
-    a = _window_slice(pts, 0, n//3)
-    d = _window_slice(pts, n//3, 2*n//3)
-    z = _window_slice(pts, 2*n//3, n)
+        
+    # Improved Strategy: Center 'during' around the peak latency or failure
+    # Find index of max latency
+    max_lat = -1.0
+    max_idx = -1
+    for i, p in enumerate(pts):
+        lat = p.get("latency_p95_ms")
+        if lat and lat > max_lat:
+            max_lat = lat
+            max_idx = i
+            
+    # Default to middle thirds if no clear peak found (unlikely)
+    if max_idx == -1:
+        start_during = n // 3
+        end_during = 2 * n // 3
+    else:
+        # Define incident window as +/- 10 samples (20s total) around peak
+        # adjusted for boundaries
+        radius = 10
+        start_during = max(0, max_idx - radius)
+        end_during = min(n, max_idx + radius + 1)
+        
+        # Ensure we have at least some separation, otherwise fall back
+        if end_during - start_during < 3:
+             start_during = n // 3
+             end_during = 2 * n // 3
+
+    # Define Before / During / After
+    # If peak is at the very start, 'before' might be empty -> handle gracefully?
+    # For now, let's just slice. _vec handles empty lists gracefully (returns empty dict)
+    
+    a = _window_slice(pts, 0, start_during)
+    d = _window_slice(pts, start_during, end_during)
+    z = _window_slice(pts, end_during, n)
+    
     fp_before = _vec(a)
     fp_during = _vec(d)
     fp_after  = _vec(z)
+    
+    # If 'before' is empty (incident at start), compare 'during' to 'after' inverted?
+    # Or just return 0 delta.
+    
     delta_db = _delta(fp_before, fp_during)
     delta_ab = _delta(fp_before, fp_after)
     label, conf = _label(delta_db)
+    
     return {
         "fp_before": fp_before,
         "fp_during": fp_during,

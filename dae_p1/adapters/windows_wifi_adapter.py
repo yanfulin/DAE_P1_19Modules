@@ -9,6 +9,7 @@ from .base_adapter import DomainAdapter
 from ..M00_common import MetricSample, ChangeEventCard, PreChangeSnapshot
 from ..M01_windowing import Windowing
 from ..M03_metrics_collector import MetricsCollector
+from ..M17_demo_simulator import DemoSimulator
 
 class WindowsWifiAdapter(DomainAdapter):
     """
@@ -20,6 +21,7 @@ class WindowsWifiAdapter(DomainAdapter):
     def __init__(self):
         self.windowing = Windowing()
         self.collector = MetricsCollector(self.windowing)
+        self.sim = DemoSimulator() # Integrated simulator
         self.last_net_io = psutil.net_io_counters()
         self.last_time = time.time()
         self.last_signal = None  # Track last signal for event generation
@@ -150,6 +152,7 @@ class WindowsWifiAdapter(DomainAdapter):
         lat, jit = self._get_ping_stats()
 
         # Check for overrides (Simulation)
+        sim_metrics = {}
         if self.overrides:
             now = time.time()
             # Remove expired
@@ -157,44 +160,29 @@ class WindowsWifiAdapter(DomainAdapter):
             for k in expired:
                 del self.overrides[k]
                 
-            # Apply active
-            # REMOVED LEGACY STATIC LOGIC THAT CAUSED CRASH
-            # if 'latency' in self.overrides: lat = self.overrides['latency']['value']
-            # if 'jitter' in self.overrides: jit = self.overrides['jitter']['value']
-            pass
+            # Check if we have an active simulation type
+            if 'simulation_type' in self.overrides:
+                # Use M17 logic to generate chaos
+                sim_type = self.overrides['simulation_type']['value']
+                sim_metrics = self.sim.generate_metrics_only(sim_type)
             
         # Collect
         # Helper to get override or actual
         def get_val(key, default):
+            # Priority: M17 generated > override > default
+            if key in sim_metrics:
+                return sim_metrics[key]
+            
+            # Fallback to old override system if needed
             if key in self.overrides:
                 ov = self.overrides[key]
-                if 'min' in ov and 'max' in ov:
-                    # Integer fields
-                    if key in ['mesh_flap_count']:
-                        return random.randint(int(ov['min']), int(ov['max']))
-                    return random.uniform(ov['min'], ov['max'])
                 return ov['value']
             return default
 
-        # Apply override logic to collected values too
-        if 'latency' in self.overrides:
-             ov = self.overrides['latency']
-             if 'min' in ov and 'max' in ov:
-                 lat = random.uniform(ov['min'], ov['max'])
-             else:
-                 lat = ov['value']
-                 
-        if 'jitter' in self.overrides:
-             ov = self.overrides['jitter']
-             if 'min' in ov and 'max' in ov:
-                 jit = random.uniform(ov['min'], ov['max'])
-             else:
-                 jit = ov['value']
-
         ms = self.collector.collect(
-            latency_p95_ms=lat, # Already handled above or can be re-handled
-            retry_pct=get_val('retry_pct', 0.0), # Default 0
-            airtime_busy_pct=get_val('airtime_busy_pct', 0.0), # Default 0
+            latency_p95_ms=get_val('latency_p95_ms', lat),
+            retry_pct=get_val('retry_pct', 0.0),
+            airtime_busy_pct=get_val('airtime_busy_pct', 0.0),
             in_rate=in_rate_mbps,
             out_rate=out_rate_mbps,
             cpu_load=cpu,

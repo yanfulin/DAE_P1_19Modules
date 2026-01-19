@@ -465,24 +465,13 @@ def simulate_incident(type: str = "latency", duration: int = 30):
     import time
     until = time.time() + duration
     
-    if type == "latency":
-        # M17 Logic: Latency 80-140ms (Jittery)
-        core.adapter.overrides['latency'] = {"min": 80.0, "max": 140.0, "until": until}
-    elif type == "retry":
-        # M17 Logic: Retry 15-30%
-        core.adapter.overrides['retry_pct'] = {"min": 15.0, "max": 30.0, "until": until}
-    elif type == "airtime":
-        # M17 Logic: Airtime 70-95%
-        core.adapter.overrides['airtime_busy_pct'] = {"min": 70.0, "max": 95.0, "until": until}
-    elif type == "complex":
-        # M17 Logic: Complex Multi-Factor Incident
-        core.adapter.overrides['latency'] = {"min": 80.0, "max": 140.0, "until": until}
-        core.adapter.overrides['retry_pct'] = {"min": 15.0, "max": 30.0, "until": until}
-        core.adapter.overrides['airtime_busy_pct'] = {"min": 70.0, "max": 95.0, "until": until}
-        core.adapter.overrides['mesh_flap_count'] = {"min": 1, "max": 4, "until": until}
-        core.adapter.overrides['wan_sinr_db'] = {"min": 2.0, "max": 8.0, "until": until}
+    if type in ["latency", "retry", "airtime", "complex"]:
+        # New simplified logic: Delegate to M17 via adapter
+        core.adapter.overrides['simulation_type'] = {"value": type, "until": until}
+    else:
+        return {"error": "Unknown incident type"}
         
-    return {"status": "Simulating", "type": type, "duration": duration, "overrides": str(core.adapter.overrides)}
+    return {"status": "Simulating", "type": type, "duration": duration, "mode": "M17_Integrated"}
 
 @app.post("/obh/trigger")
 def trigger_obh():

@@ -18,6 +18,40 @@ class DemoSimulator:
         self.events = ChangeEventLogger(self.windowing, VersionRefs(fw="fw1.0", driver="drv1.0"))
         self.snaps = SnapshotManager()
 
+    def generate_metrics_only(self, incident_type: str = None) -> dict:
+        """
+        Generate a single dict of metrics (latency, retry, etc.) with randomization.
+        incident_type: None (baseline), 'latency', 'retry', 'airtime', 'complex'
+        """
+        # Default Baseline
+        latency = random.uniform(20, 50)
+        retry = random.uniform(2, 10)
+        airtime = random.uniform(20, 60)
+        flap = random.randint(0, 1)
+        sinr = random.uniform(8, 18)
+
+        if incident_type:
+            if incident_type == 'latency' or incident_type == 'complex':
+                latency = random.uniform(80, 140)
+            
+            if incident_type == 'retry' or incident_type == 'complex':
+                retry = random.uniform(15, 30)
+                
+            if incident_type == 'airtime' or incident_type == 'complex':
+                airtime = random.uniform(70, 95)
+                
+            if incident_type == 'complex':
+                flap = random.randint(1, 4)
+                sinr = random.uniform(2, 8)
+
+        return {
+            "latency_p95_ms": latency,
+            "retry_pct": retry,
+            "airtime_busy_pct": airtime,
+            "mesh_flap_count": flap,
+            "wan_sinr_db": sinr
+        }
+
     def generate_step(self, t: int) -> Tuple[dict, List, List]:
         # t=0: Emulated post-install state
         m_evs = []
@@ -27,21 +61,20 @@ class DemoSimulator:
              m_snaps.append(snap)
 
         # Simulate a baseline then an incident around t in [20, 40]
+        inc_type = None
         if 20 <= t <= 40:
-            latency = random.uniform(80, 140)
-            retry = random.uniform(15, 30)
-            airtime = random.uniform(70, 95)
-            flap = random.randint(1, 4)
-            sinr = random.uniform(2, 8)
-        else:
-            latency = random.uniform(20, 50)
-            retry = random.uniform(2, 10)
-            airtime = random.uniform(20, 60)
-            flap = random.randint(0, 1)
-            sinr = random.uniform(8, 18)
-
-        m = self.collector.collect(latency_p95_ms=latency, retry_pct=retry, airtime_busy_pct=airtime,
-                                   mesh_flap_count=flap, wan_sinr_db=sinr)
+            inc_type = 'complex'
+            
+        metrics = self.generate_metrics_only(inc_type)
+        
+        # Create MetricSample using the collector (which adds TS, WindowRef)
+        m = self.collector.collect(
+            latency_p95_ms=metrics["latency_p95_ms"],
+            retry_pct=metrics["retry_pct"],
+            airtime_busy_pct=metrics["airtime_busy_pct"],
+            mesh_flap_count=metrics["mesh_flap_count"],
+            wan_sinr_db=metrics["wan_sinr_db"]
+        )
 
         evs = []
         snaps = []

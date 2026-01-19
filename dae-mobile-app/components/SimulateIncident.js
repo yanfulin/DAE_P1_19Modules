@@ -9,10 +9,10 @@ export default function SimulateIncident({ onBack }) {
     const [timeLeft, setTimeLeft] = useState(0);
 
     const incidentTypes = [
-        { id: 'latency', label: 'Latency Spike', desc: 'Adds 150ms delay' },
-        { id: 'retry', label: 'High Packet Loss', desc: 'Sets retry to 25%' },
-        { id: 'airtime', label: 'Airtime Congestion', desc: 'Sets busy to 85%' },
-        { id: 'complex', label: 'Complex Incident', desc: 'Latency + Packet Loss' },
+        { id: 'latency', label: 'Latency Spike', desc: 'Variable Jitter (80-140ms)' },
+        { id: 'retry', label: 'High Packet Loss', desc: 'Heavy Loss (15-30%)' },
+        { id: 'airtime', label: 'Airtime Congestion', desc: 'Severe Congestion (70-95%)' },
+        { id: 'complex', label: 'Complex Incident', desc: 'Multi-factor Chaos (Latency, Loss, Flaps)' },
     ];
 
     const handleStartSimulation = async () => {

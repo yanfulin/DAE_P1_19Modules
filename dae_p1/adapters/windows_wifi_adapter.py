@@ -3,6 +3,7 @@ import psutil
 import time
 import subprocess
 import re
+import random
 from typing import List, Tuple, Optional
 from .base_adapter import DomainAdapter
 from ..M00_common import MetricSample, ChangeEventCard, PreChangeSnapshot
@@ -157,16 +158,38 @@ class WindowsWifiAdapter(DomainAdapter):
                 del self.overrides[k]
                 
             # Apply active
-            if 'latency' in self.overrides: lat = self.overrides['latency']['value']
-            if 'jitter' in self.overrides: jit = self.overrides['jitter']['value']
-            # Only override collected values or inject new ones?
-            # We inject new ones into collector below.
+            # REMOVED LEGACY STATIC LOGIC THAT CAUSED CRASH
+            # if 'latency' in self.overrides: lat = self.overrides['latency']['value']
+            # if 'jitter' in self.overrides: jit = self.overrides['jitter']['value']
+            pass
             
         # Collect
         # Helper to get override or actual
         def get_val(key, default):
-            if key in self.overrides: return self.overrides[key]['value']
+            if key in self.overrides:
+                ov = self.overrides[key]
+                if 'min' in ov and 'max' in ov:
+                    # Integer fields
+                    if key in ['mesh_flap_count']:
+                        return random.randint(int(ov['min']), int(ov['max']))
+                    return random.uniform(ov['min'], ov['max'])
+                return ov['value']
             return default
+
+        # Apply override logic to collected values too
+        if 'latency' in self.overrides:
+             ov = self.overrides['latency']
+             if 'min' in ov and 'max' in ov:
+                 lat = random.uniform(ov['min'], ov['max'])
+             else:
+                 lat = ov['value']
+                 
+        if 'jitter' in self.overrides:
+             ov = self.overrides['jitter']
+             if 'min' in ov and 'max' in ov:
+                 jit = random.uniform(ov['min'], ov['max'])
+             else:
+                 jit = ov['value']
 
         ms = self.collector.collect(
             latency_p95_ms=lat, # Already handled above or can be re-handled
@@ -184,7 +207,10 @@ class WindowsWifiAdapter(DomainAdapter):
             band=band,
             phy_rate_mbps=tx,
             phy_rx_rate_mbps=rx,
-            dns_status=dns
+            dns_status=dns,
+            # Injected fields
+            mesh_flap_count=get_val('mesh_flap_count', 0),
+            wan_sinr_db=get_val('wan_sinr_db', None)
         )
         
         # Store for event generation in next call (or same tick if we want strict sync, but adapter pattern separates them)

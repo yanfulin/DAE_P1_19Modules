@@ -466,15 +466,21 @@ def simulate_incident(type: str = "latency", duration: int = 30):
     until = time.time() + duration
     
     if type == "latency":
-        core.adapter.overrides['latency'] = {"value": 150.0, "until": until} # > 60
+        # M17 Logic: Latency 80-140ms (Jittery)
+        core.adapter.overrides['latency'] = {"min": 80.0, "max": 140.0, "until": until}
     elif type == "retry":
-        core.adapter.overrides['retry_pct'] = {"value": 25.0, "until": until} # > 18
+        # M17 Logic: Retry 15-30%
+        core.adapter.overrides['retry_pct'] = {"min": 15.0, "max": 30.0, "until": until}
     elif type == "airtime":
-        core.adapter.overrides['airtime_busy_pct'] = {"value": 85.0, "until": until} # > 75
+        # M17 Logic: Airtime 70-95%
+        core.adapter.overrides['airtime_busy_pct'] = {"min": 70.0, "max": 95.0, "until": until}
     elif type == "complex":
-        # Multi-factor
-        core.adapter.overrides['latency'] = {"value": 120.0, "until": until}
-        core.adapter.overrides['retry_pct'] = {"value": 20.0, "until": until}
+        # M17 Logic: Complex Multi-Factor Incident
+        core.adapter.overrides['latency'] = {"min": 80.0, "max": 140.0, "until": until}
+        core.adapter.overrides['retry_pct'] = {"min": 15.0, "max": 30.0, "until": until}
+        core.adapter.overrides['airtime_busy_pct'] = {"min": 70.0, "max": 95.0, "until": until}
+        core.adapter.overrides['mesh_flap_count'] = {"min": 1, "max": 4, "until": until}
+        core.adapter.overrides['wan_sinr_db'] = {"min": 2.0, "max": 8.0, "until": until}
         
     return {"status": "Simulating", "type": type, "duration": duration, "overrides": str(core.adapter.overrides)}
 

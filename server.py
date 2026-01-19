@@ -124,8 +124,16 @@ def get_install_verify():
     # Get all available metrics from the buffer to form the window
     metrics_snapshot = core.metrics_buf.snapshot()
     
+    # Get Internals for C01/C06 display
+    ws, wl = core.windowing.current_refs()
+    w_refs = {"Ws": ws, "Wl": wl}
+    b_stats = {
+        "count": len(metrics_snapshot),
+        "capacity": core.metrics_buf._dq.maxlen
+    }
+    
     # Run verification (defaults to 3 minute window inside the function)
-    result = verify_install(metrics_snapshot)
+    result = verify_install(metrics_snapshot, window_refs=w_refs, buffer_stats=b_stats)
     
     return result
 

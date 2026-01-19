@@ -3,7 +3,7 @@ import psutil
 import time
 import subprocess
 import re
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from .base_adapter import DomainAdapter
 from ..M00_common import MetricSample, ChangeEventCard, PreChangeSnapshot
 from ..M01_windowing import Windowing
@@ -26,17 +26,66 @@ class WindowsWifiAdapter(DomainAdapter):
         self._last_snaps = []
         self.overrides = {} # For simulation injection
 
-    def _get_signal_strength(self) -> int:
+    def _get_signal_strength(self) -> Tuple[int, Optional[int], Optional[str], Optional[str], Optional[int], Optional[int]]:
+        """
+        Returns (signal_pct, channel, radio_type, band, tx_rate_mbps, rx_rate_mbps)
+        """
+        signal = 0
+        channel = None
+        radio_type = None
+        band = None
+        tx_rate = None
+        rx_rate = None
+
         try:
             # Run netsh wlan show interfaces
-            # Output line: "    Signal                 : 80%"
             output = subprocess.check_output("netsh wlan show interfaces", shell=True).decode("utf-8", errors="ignore")
-            match = re.search(r"Signal\s*:\s*(\d+)%", output)
-            if match:
-                return int(match.group(1))
+            
+            # Signal
+            match_sig = re.search(r"Signal\s*:\s*(\d+)%", output)
+            if match_sig:
+                signal = int(match_sig.group(1))
+
+            # Channel
+            match_ch = re.search(r"Channel\s*:\s*(\d+)", output)
+            if match_ch:
+                channel = int(match_ch.group(1))
+
+            # Radio Type
+            match_rad = re.search(r"Radio type\s*:\s*(.+)", output)
+            if match_rad:
+                radio_type = match_rad.group(1).strip()
+
+            # Band (infer from channel or find Band line if available, often Band is not explicit in all windows versions)
+            # Some output has "Band : 5 GHz"
+            match_band = re.search(r"Band\s*:\s*(.+)", output)
+            if match_band:
+                band = match_band.group(1).strip()
+            
+            # Tx/Rx Rates
+            # "Transmit rate (Mbps) : 1201"
+            # "Receive rate (Mbps)  : 1201"
+            match_tx = re.search(r"Transmit rate \(Mbps\)\s*:\s*(\d+)", output)
+            if match_tx:
+                tx_rate = int(match_tx.group(1))
+            
+            match_rx = re.search(r"Receive rate \(Mbps\)\s*:\s*(\d+)", output)
+            if match_rx:
+                rx_rate = int(match_rx.group(1))
+
         except Exception:
             pass
-        return 0
+            
+        return signal, channel, radio_type, band, tx_rate, rx_rate
+
+    def _check_dns_status(self) -> str:
+        """Simple check if we can resolve google.com"""
+        try:
+            # nslookup is ubiquitous
+            subprocess.check_call("nslookup google.com", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return "OK"
+        except Exception:
+            return "FAIL"
 
     def _get_ping_stats(self) -> Tuple[float, float]:
         """Returns (latency_ms, jitter_ms). Jitter is approximated as 0 for single ping or stdev for multiple."""
@@ -87,8 +136,11 @@ class WindowsWifiAdapter(DomainAdapter):
         self.last_net_io = current_net_io
         self.last_time = current_time
 
-        # 3. Signal Strength
-        signal = self._get_signal_strength()
+        # 3. Signal Strength & Extended Wifi Info
+        signal, channel, radio, band, tx, rx = self._get_signal_strength()
+        
+        # DNS Check (Do periodically? Every 1s might be heavy. Let's do it every tick for now demo)
+        dns = self._check_dns_status()
         
         # 4. Latency & Jitter
         # Execute ping. Note: this blocks! In a real async server, run in executor.
@@ -125,7 +177,14 @@ class WindowsWifiAdapter(DomainAdapter):
             cpu_load=cpu,
             mem_load=mem,
             signal_strength_pct=signal,
-            jitter_ms=jit
+            jitter_ms=jit,
+            # Extended fields
+            channel=channel,
+            radio_type=radio,
+            band=band,
+            phy_rate_mbps=tx,
+            phy_rx_rate_mbps=rx,
+            dns_status=dns
         )
         
         # Store for event generation in next call (or same tick if we want strict sync, but adapter pattern separates them)

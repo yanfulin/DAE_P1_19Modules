@@ -52,6 +52,14 @@ class MetricSample:
     cpu_load: Optional[float] = None
     mem_load: Optional[float] = None
     signal_strength_pct: Optional[int] = None
+    # Extended metrics for Install Verify
+    phy_rate_mbps: Optional[int] = None # Transmit Rate
+    phy_rx_rate_mbps: Optional[int] = None # Receive Rate
+    channel: Optional[int] = None
+    bssid: Optional[str] = None
+    radio_type: Optional[str] = None
+    band: Optional[str] = None
+    dns_status: Optional[str] = None # OK / FAIL
 
 @dataclass
 class ChangeEventCard:

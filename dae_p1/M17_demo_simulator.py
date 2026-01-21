@@ -25,10 +25,15 @@ class DemoSimulator:
         """
         # Default Baseline
         latency = random.uniform(20, 50)
-        retry = random.uniform(2, 10)
-        airtime = random.uniform(20, 60)
-        flap = random.randint(0, 1)
-        sinr = random.uniform(8, 18)
+        retry = random.uniform(0.1, 2.0)
+        airtime = random.uniform(20, 40)
+        flap = 0 # random.randint(0, 1) # Keep flaps low for baseline
+        sinr = random.uniform(25, 40) # Higher is better
+        
+        # Good Wifi defaults
+        signal = random.randint(85, 99)
+        phy_rate = random.randint(866, 1200)
+        dns = "OK"
 
         if incident_type:
             if incident_type == 'latency' or incident_type == 'complex':
@@ -36,6 +41,7 @@ class DemoSimulator:
             
             if incident_type == 'retry' or incident_type == 'complex':
                 retry = random.uniform(15, 30)
+                signal = random.randint(40, 60) # weak signal often causes retry
                 
             if incident_type == 'airtime' or incident_type == 'complex':
                 airtime = random.uniform(70, 95)
@@ -43,13 +49,20 @@ class DemoSimulator:
             if incident_type == 'complex':
                 flap = random.randint(1, 4)
                 sinr = random.uniform(2, 8)
+                dns = "FAIL"
 
         return {
             "latency_p95_ms": latency,
             "retry_pct": retry,
             "airtime_busy_pct": airtime,
             "mesh_flap_count": flap,
-            "wan_sinr_db": sinr
+            "wan_sinr_db": sinr,
+            "signal_strength_pct": signal,
+            "phy_rate_mbps": phy_rate,
+            "dns_status": dns,
+            "channel": 36,
+            "band": "5GHz",
+            "radio_type": "802.11ax"
         }
 
     def generate_step(self, t: int) -> Tuple[dict, List, List]:
@@ -60,9 +73,9 @@ class DemoSimulator:
              snap = self.snaps.create_pre_change("wlan", {"channel": 36, "bandwidth": 80, "steering_enabled": True}, snapshot_type="post-install")
              m_snaps.append(snap)
 
-        # Simulate a baseline then an incident around t in [20, 40]
+        # Simulate a baseline then an incident around t in [300, 320] (moved later so startup is clean)
         inc_type = None
-        if 20 <= t <= 40:
+        if 300 <= t <= 320:
             inc_type = 'complex'
             
         metrics = self.generate_metrics_only(inc_type)
@@ -73,24 +86,24 @@ class DemoSimulator:
             retry_pct=metrics["retry_pct"],
             airtime_busy_pct=metrics["airtime_busy_pct"],
             mesh_flap_count=metrics["mesh_flap_count"],
-            wan_sinr_db=metrics["wan_sinr_db"]
+            wan_sinr_db=metrics["wan_sinr_db"],
+            signal_strength_pct=metrics["signal_strength_pct"],
+            # Extended
+            channel=metrics["channel"],
+            radio_type=metrics["radio_type"],
+            band=metrics["band"],
+            phy_rate_mbps=metrics["phy_rate_mbps"],
+            dns_status=metrics["dns_status"]
         )
 
         evs = []
         snaps = []
-        # Occasionally emit a change event (sometimes missing refs)
-        if t in (18, 22, 28, 35):
+        # Occasionally emit a change event 
+        if t in (318, 500):
             stype = "periodic"
-            if t == 18: stype = "pre-incident"
-            if t == 35: stype = "post-incident"
-            
             snap = self.snaps.create_pre_change("wlan", {"channel": 36, "bandwidth": 80, "steering_enabled": True}, snapshot_type=stype)
             snaps.append(snap)
-            if t == 28:
-                # opaque-like: missing change_ref and unknown origin
-                ev = self.events.record("policy_update", origin_hint="unknown", target_scope="wlan", change_ref=None)
-            else:
-                ev = self.events.record("policy_update", origin_hint="cloud", target_scope="wlan", change_ref=f"pol-{t}")
+            ev = self.events.record("policy_update", origin_hint="cloud", target_scope="wlan", change_ref=f"pol-{t}")
             evs.append(ev)
 
         evs.extend(m_evs)

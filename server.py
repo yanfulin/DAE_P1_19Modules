@@ -3,8 +3,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-# from dae_p1.adapters.demo_adapter import DemoAdapter
-from dae_p1.adapters.windows_wifi_adapter import WindowsWifiAdapter
+
 from dae_p1.core_service import OBHCoreService, CoreRuntimeConfig
 from dae_p1.M20_install_verify import verify_install
 from dae_p1.status_helper import calculate_simple_status
@@ -35,8 +34,23 @@ async def run_core_loop():
 async def lifespan(app: FastAPI):
     # Startup
     global adapter, core, background_task
-    logger.info("Initializing Core Service with WindowsWifiAdapter...")
-    adapter = WindowsWifiAdapter()
+    
+    import platform
+    os_name = platform.system()
+    
+    if os_name == "Windows":
+        try:
+            from dae_p1.adapters.windows_wifi_adapter import WindowsWifiAdapter
+            logger.info("Windows detected. Initializing Core Service with WindowsWifiAdapter...")
+            adapter = WindowsWifiAdapter()
+        except ImportError as e:
+            logger.error(f"Failed to import WindowsWifiAdapter on Windows: {e}. Fallback to Demo.")
+            from dae_p1.adapters.demo_adapter import DemoAdapter
+            adapter = DemoAdapter()
+    else:
+        logger.info(f"{os_name} detected (Not Windows). Initializing Core Service with DemoAdapter...")
+        from dae_p1.adapters.demo_adapter import DemoAdapter
+        adapter = DemoAdapter()
     
     # Use accelerate=True so it doesn't sleep internally, we control loop with asyncio
     cfg = CoreRuntimeConfig(sample_interval_sec=1, buffer_minutes=60, accelerate=True)

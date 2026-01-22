@@ -17,7 +17,12 @@ export default function App() {
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
 
   const handleNavigate = (screenId) => {
-    setCurrentScreen(screenId);
+    if (screenId === 'PROOF_LOCAL') {
+      setSelectedDeviceId('local');
+      setCurrentScreen('PROOF');
+    } else {
+      setCurrentScreen(screenId);
+    }
   };
 
   const navigateToDrilldown = (deviceId) => {

@@ -26,6 +26,13 @@ export default function HomeDashboard({ onNavigate }) {
             icon: '⛑'
         },
         {
+            id: 'PROOF_LOCAL',
+            title: 'My Proof Card',
+            desc: 'View RGAP digital voucher',
+            color: '#673ab7',
+            icon: '📜'
+        },
+        {
             id: 'FLEET',
             title: 'Fleet View',
             desc: 'Monitor all devices (Legacy)',

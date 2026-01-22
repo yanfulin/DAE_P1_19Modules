@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dae_p1.core_service import OBHCoreService, CoreRuntimeConfig
 from dae_p1.M20_install_verify import verify_install
 from dae_p1.status_helper import calculate_simple_status
+from dae_p1.rgap import RGAPController, OutcomeFacet, ProofCard, asdict as dataclass_asdict
 
 
 # Configure logging
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 adapter = None
 core = None
 background_task = None
+rgap_ctrl = None
 
 async def run_core_loop():
     """Background task to simulate the core service tick."""
@@ -33,7 +35,7 @@ async def run_core_loop():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    global adapter, core, background_task
+    global adapter, core, background_task, rgap_ctrl
     
     import platform
     os_name = platform.system()
@@ -55,6 +57,13 @@ async def lifespan(app: FastAPI):
     # Use accelerate=True so it doesn't sleep internally, we control loop with asyncio
     cfg = CoreRuntimeConfig(sample_interval_sec=1, buffer_minutes=60, accelerate=True)
     core = OBHCoreService(adapter, cfg)
+    
+    # Initialize RGAP Controller
+    # rgap_ctrl = RGAPController() # Deprecated global
+    # logger.info(f"LIFESPAN: RGAP Controller Initialized: {rgap_ctrl}")
+    
+    app.state.rgap_ctrl = RGAPController()
+    logger.info(f"LIFESPAN: RGAP Controller Initialized in app.state: {app.state.rgap_ctrl}")
     
     background_task = asyncio.create_task(run_core_loop())
     
@@ -450,22 +459,69 @@ def get_device_detail(device_id: str):
          "compliance_verdict": {"result": "PASS", "evidence_missing": []}
     }
 
+from fastapi import Request
+
 @app.get("/device/{device_id}/proof")
-def get_device_proof(device_id: str):
-    """Get the Proof Card summary."""
-    # Reuse getting detail to construct the card
-    detail = get_device_detail(device_id)
-    
-    # Construct card
+def get_device_proof(request: Request, device_id: str):
+    """Get the Proof Card (RGAP v1.3)."""
+    rgap_ctrl = getattr(request.app.state, "rgap_ctrl", None)
+    logger.info(f"ENDPOINT: Accessing RGAP Controller from state: {rgap_ctrl}")
+    if not rgap_ctrl:
+        return {"error": "RGAP Controller not initialized"}
+
+    # 1. Gather Data (similar to detail view)
+    if device_id == "local" and core:
+        # Calculate Verdicts
+        m_snaps = core.metrics_buf.snapshot()
+        v_result = verify_install(m_snaps)
+        
+        # Map to RGAP fields
+        verdict = "READY" if v_result.closure_readiness == "ready" else "NOT_READY"
+        if v_result.readiness_verdict == "FAIL":
+            verdict = "NOT_READY" # stricter mapping
+        
+        reasons = []
+        if v_result.dominant_factor != "UNKNOWN":
+            reasons.append(v_result.dominant_factor)
+        if not reasons and verdict == "NOT_READY":
+            reasons.append("generic_failure")
+            
+        # Create Facets (Example mapping from metrics)
+        facets = []
+        last = core.metrics_buf.last()
+        if last:
+            # We can map some real metrics if available in last sample
+            # This is a simplification; ideally we aggregate over the window
+            facets.append(OutcomeFacet("fwa_rsrp_p50_dbm", getattr(last, 'rsrp', -100), "dBm"))
+            facets.append(OutcomeFacet("fwa_sinr_p50_db", getattr(last, 'sinr', 0), "dB"))
+        
+        card = rgap_ctrl.generate_proof_card(
+            verdict=verdict,
+            reason_codes=reasons,
+            facets=facets,
+            sample_count=len(m_snaps)
+        )
+        return dataclass_asdict(card)
+
+    # Mock fallback for other devices or if core missing
     return {
-        "title": f"Proof Card - {device_id}",
-        "timestamp": "Now",
-        "trigger_summary": detail["cohort_compare"]["message"],
-        "snapshot_refs": [s["ref"] for s in detail["obh_snapshot_timeline"]],
-        "feature_ledger_summary": f"{len(detail['feature_ledger'])} features tracked",
-        "closure_readiness": "READY" if detail["compliance_verdict"]["result"] == "PASS" else "NOT_READY",
-        "vendor_compliance_verdict": detail["compliance_verdict"]["result"]
+        "proof_card_ref": "PC-MOCK-001",
+        "verdict": "NOT_READY",
+        "reason_code": ["mock_device_no_data"],
+        "outcome_facet": []
     }
+
+@app.get("/manifest/{device_id}")
+def get_manifest(device_id: str):
+    """Get the RGAP Manifest."""
+    if not rgap_ctrl:
+        return {"error": "RGAP Controller not initialized"}
+    
+    # For local device, return the real manifest
+    if device_id == "local":
+        return dataclass_asdict(rgap_ctrl.manifest)
+    
+    return {"manifest_ref": "man-mock", "available_day_refs": []}
 
 @app.post("/simulate/incident")
 def simulate_incident(type: str = "latency", duration: int = 30):

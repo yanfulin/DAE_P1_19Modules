@@ -1,0 +1,11 @@
+{
+  "manifest": {
+    "manifest_ref": "M-1769066993",
+    "available_day_refs": [
+      "day-20260122"
+    ],
+    "available_event_refs": [],
+    "bundle_pointer": "local_json_store"
+  },
+  "updated_at": 1769067152.6185124
+}

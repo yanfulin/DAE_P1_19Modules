@@ -42,41 +42,47 @@ class WindowsWifiAdapter(DomainAdapter):
 
         try:
             # Run netsh wlan show interfaces
-            output = subprocess.check_output("netsh wlan show interfaces", shell=True).decode("utf-8", errors="ignore")
+            # Try decoding with cp950 (Traditional Chinese) first, then utf-8, then ignore errors
+            raw_output = subprocess.check_output("netsh wlan show interfaces", shell=True)
+            output = ""
+            try:
+                output = raw_output.decode("cp950")
+            except:
+                output = raw_output.decode("utf-8", errors="ignore")
             
-            # Signal
-            match_sig = re.search(r"Signal\s*:\s*(\d+)%", output)
+            # Signal: "Signal : 88%" or "訊號 : 88%"
+            match_sig = re.search(r"(?:Signal|訊號)\s*[:：]\s*(\d+)%", output)
             if match_sig:
                 signal = int(match_sig.group(1))
 
-            # Channel
-            match_ch = re.search(r"Channel\s*:\s*(\d+)", output)
+            # Channel: "Channel : 108" or "通道 : 108"
+            match_ch = re.search(r"(?:Channel|通道)\s*[:：]\s*(\d+)", output)
             if match_ch:
                 channel = int(match_ch.group(1))
 
-            # Radio Type
-            match_rad = re.search(r"Radio type\s*:\s*(.+)", output)
+            # Radio Type: "Radio type : 802.11ac" or "無線電波類型 : 802.11ac"
+            match_rad = re.search(r"(?:Radio type|無線電波類型)\s*[:：]\s*(.+)", output)
             if match_rad:
                 radio_type = match_rad.group(1).strip()
 
-            # Band (infer from channel or find Band line if available, often Band is not explicit in all windows versions)
-            # Some output has "Band : 5 GHz"
-            match_band = re.search(r"Band\s*:\s*(.+)", output)
+            # Band: "Band : 5 GHz" or "頻帶 : 5 GHz"
+            match_band = re.search(r"(?:Band|頻帶)\s*[:：]\s*(.+)", output)
             if match_band:
                 band = match_band.group(1).strip()
             
             # Tx/Rx Rates
-            # "Transmit rate (Mbps) : 1201"
-            # "Receive rate (Mbps)  : 1201"
-            match_tx = re.search(r"Transmit rate \(Mbps\)\s*:\s*(\d+)", output)
+            # "Transmit rate (Mbps) : 1201" or "傳輸速率 (Mbps) : 400"
+            match_tx = re.search(r"(?:Transmit rate|傳輸速率).*?\(Mbps\)\s*[:：]\s*(\d+)", output)
             if match_tx:
                 tx_rate = int(match_tx.group(1))
             
-            match_rx = re.search(r"Receive rate \(Mbps\)\s*:\s*(\d+)", output)
+            # "Receive rate (Mbps) : 1201" or "接收速率 (Mbps) : 162"
+            match_rx = re.search(r"(?:Receive rate|接收速率).*?\(Mbps\)\s*[:：]\s*(\d+)", output)
             if match_rx:
                 rx_rate = int(match_rx.group(1))
 
-        except Exception:
+        except Exception as e:
+            # print(f"Error parsing netsh: {e}")
             pass
             
         return signal, channel, radio_type, band, tx_rate, rx_rate

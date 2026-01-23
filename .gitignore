@@ -17,4 +17,5 @@ TEST_REPORT_10RUNS.md
 server_log.txt
 expo_log.txt
 bundles/
+cpe_metrics.db
 

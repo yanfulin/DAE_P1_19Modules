@@ -1,18 +1,29 @@
 
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, Button, ActivityIndicator, Share, Platform, ScrollView } from 'react-native';
-import { fetchProofData } from '../src/api';
+import { fetchProofData, fetchManifest } from '../src/api';
 
 export default function ProofCard({ deviceId, onBack }) {
     const [proof, setProof] = useState(null);
+    const [manifest, setManifest] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
         const load = async () => {
             try {
-                const data = await fetchProofData(deviceId);
-                setProof(data);
+                // Fetch both Proof and Manifest in parallel
+                const [proofData, manifestData] = await Promise.all([
+                    fetchProofData(deviceId),
+                    fetchManifest(deviceId)
+                ]);
+
+                if (!proofData) throw new Error("Failed to fetch proof data");
+                setProof(proofData);
+
+                // Manifest is optional but good to have
+                if (manifestData) setManifest(manifestData);
+
             } catch (err) {
                 setError(err.message);
             }
@@ -23,9 +34,13 @@ export default function ProofCard({ deviceId, onBack }) {
 
     const handleShare = async () => {
         if (!proof) return;
+        const msg = {
+            proof: proof,
+            manifest: manifest
+        };
         try {
             await Share.share({
-                message: JSON.stringify(proof, null, 2),
+                message: JSON.stringify(msg, null, 2),
                 title: proof.proof_card_ref || "DAE Proof Card"
             });
         } catch (e) {
@@ -106,6 +121,20 @@ export default function ProofCard({ deviceId, onBack }) {
                     <View style={styles.manifestBox}>
                         <Text style={styles.manifestLabel}>Manifest Ref:</Text>
                         <Text style={styles.manifestValue}>{proof.manifest_ref}</Text>
+
+                        {manifest && (
+                            <>
+                                <View style={{ marginTop: 8 }} />
+                                <Text style={styles.manifestLabel}>Bundle Pointer:</Text>
+                                <Text style={styles.manifestValue}>{manifest.bundle_pointer}</Text>
+
+                                <View style={{ marginTop: 8 }} />
+                                <Text style={styles.manifestLabel}>Available Days:</Text>
+                                <Text style={styles.manifestValue}>
+                                    {manifest.available_day_refs ? manifest.available_day_refs.join(", ") : "None"}
+                                </Text>
+                            </>
+                        )}
                     </View>
 
                 </View>
@@ -162,5 +191,9 @@ const styles = StyleSheet.create({
     manifestBox: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 8 },
     manifestLabel: { fontSize: 10, color: '#aaa' },
     manifestValue: { fontSize: 10, color: '#aaa', fontFamily: 'monospace' },
-    helperText: { color: '#aaa', textAlign: 'center', marginTop: 24, fontSize: 12 }
+    helperText: { color: '#aaa', textAlign: 'center', marginTop: 24, fontSize: 12 },
+    infoGrid: { marginTop: 15, padding: 10, backgroundColor: '#f9f9f9', borderRadius: 8 },
+    infoItem: { flexDirection: 'row', marginBottom: 4 },
+    infoLabel: { width: 80, fontSize: 11, color: '#666', fontWeight: 'bold' },
+    infoValue: { flex: 1, fontSize: 11, color: '#444' }
 });

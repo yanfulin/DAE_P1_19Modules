@@ -72,6 +72,10 @@ class ChangeEventCard:
     version_refs: VersionRefs = field(default_factory=VersionRefs)
     window_ref: Optional[str] = None
 
+    def __post_init__(self):
+        if isinstance(self.version_refs, dict):
+            self.version_refs = VersionRefs(**self.version_refs)
+
 @dataclass
 class PreChangeSnapshot:
     snapshot_ref_id: str

@@ -92,6 +92,16 @@ export const fetchProofData = async (deviceId) => {
     }
 };
 
+export const fetchManifest = async (deviceId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/device/${deviceId}/manifest`);
+        return await response.json();
+    } catch (error) {
+        console.error(`Error fetching manifest for ${deviceId}:`, error);
+        return null;
+    }
+};
+
 export const simulateIncident = async (type, duration) => {
     try {
         const response = await fetch(`${API_BASE_URL}/simulate/incident?type=${type}&duration=${duration}`, {

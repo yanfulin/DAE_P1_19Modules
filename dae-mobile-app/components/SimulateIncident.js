@@ -13,6 +13,8 @@ export default function SimulateIncident({ onBack }) {
         { id: 'retry', label: 'High Packet Loss', desc: 'Heavy Loss (15-30%)' },
         { id: 'airtime', label: 'Airtime Congestion', desc: 'Severe Congestion (70-95%)' },
         { id: 'complex', label: 'Complex Incident', desc: 'Multi-factor Chaos (Latency, Loss, Flaps)' },
+        { id: 'oscillating', label: 'Oscillating', desc: 'Square wave + Bursts' },
+        { id: 'degrading', label: 'Degrading', desc: 'Slow drift into failure' },
     ];
 
     const handleStartSimulation = async () => {

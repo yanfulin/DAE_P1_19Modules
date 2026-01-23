@@ -17,6 +17,9 @@ export default function App() {
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
 
   const handleNavigate = (screenId) => {
+    if (screenId === 'PROOF') {
+      setSelectedDeviceId('local');
+    }
     setCurrentScreen(screenId);
   };
 

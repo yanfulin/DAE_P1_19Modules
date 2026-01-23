@@ -1,0 +1,153 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.local/dae/ProofCard_V1.3.schema.json",
+    "title": "ProofCard V1.3",
+    "type": "object",
+    "required": [
+        "proof_card_ref",
+        "profile_ref",
+        "verdict",
+        "window_ref",
+        "reason_code",
+        "enforcement_path_ref",
+        "authority_scope_ref",
+        "validity_horizon_ref",
+        "validity_verdict",
+        "basis_ref",
+        "sample_count",
+        "outcome_facet",
+        "evidence_bundle_ref",
+        "manifest_ref"
+    ],
+    "properties": {
+        "proof_card_ref": {
+            "type": "string"
+        },
+        "profile_ref": {
+            "type": "string"
+        },
+        "verdict": {
+            "type": "string",
+            "enum": [
+                "READY",
+                "NOT_READY",
+                "INSUFFICIENT_EVIDENCE"
+            ]
+        },
+        "window_ref": {
+            "type": "string"
+        },
+        "reason_code": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "minItems": 1
+        },
+        "enforcement_path_ref": {
+            "type": "string"
+        },
+        "authority_scope_ref": {
+            "type": "string"
+        },
+        "validity_horizon_ref": {
+            "type": "string"
+        },
+        "validity_verdict": {
+            "type": "string",
+            "enum": [
+                "VALID",
+                "STALE",
+                "OUT_OF_SCOPE",
+                "COMPROMISED",
+                "UNKNOWN"
+            ]
+        },
+        "basis_ref": {
+            "type": "string"
+        },
+        "sample_count": {
+            "type": "integer"
+        },
+        "p50": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "name",
+                    "value",
+                    "unit"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "number"
+                    },
+                    "unit": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "p95": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "name",
+                    "value",
+                    "unit"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "number"
+                    },
+                    "unit": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "outcome_facet": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "name",
+                    "value",
+                    "unit"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "number"
+                    },
+                    "unit": {
+                        "type": "string"
+                    }
+                }
+            },
+            "minItems": 1
+        },
+        "event_type": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "evidence_bundle_ref": {
+            "type": "string"
+        },
+        "manifest_ref": {
+            "type": "string"
+        }
+    },
+    "additionalProperties": true
+}

@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, List, Tuple
 import time
+import os
 
-from .M02_ring_buffer import RingBuffer
+from .M02_ring_buffer import RingBuffer, SQLiteRingBuffer
 from .M10_timeline_builder import TimelineBuilder
 from .M11_bundle_exporter import BundleExporter
 from .M12_obh_controller import OBHController, OBHResult
@@ -19,25 +20,35 @@ class CoreRuntimeConfig:
     buffer_minutes: int = 60
     # For demos/tests we can accelerate time with a smaller interval
     accelerate: bool = False
+    # API to enable persistence
+    persistence_enabled: bool = True
+    db_path: str = "data/cpe_metrics.db"
 
 class OBHCoreService:
     """
     OBH Core runner that consumes a DomainAdapter.
-    Core semantics are unchanged. This only standardizes the data ingress path.
-
-    - Collects MetricSample every sample_interval_sec (or faster if accelerate=True)
-    - Collects ChangeEventCard and PreChangeSnapshot on each cycle (best-effort)
-    - Maintains rolling buffers
-    - On-demand: generates EpisodeRecognition and exports an evidence bundle via OBHController
     """
     def __init__(self, adapter: DomainAdapter, config: CoreRuntimeConfig = CoreRuntimeConfig()):
         self.adapter = adapter
         self.cfg = config
-        # 60 min @ 10s = 360 samples; scale with interval
-        max_metrics = int((config.buffer_minutes * 60) / max(1, config.sample_interval_sec))
-        self.metrics_buf: RingBuffer[MetricSample] = RingBuffer(maxlen=max_metrics)
-        self.events_buf: RingBuffer[ChangeEventCard] = RingBuffer(maxlen=500)
-        self.snaps_buf: RingBuffer[PreChangeSnapshot] = RingBuffer(maxlen=500)
+        
+        # 7 Days @ 10s = 60480 samples.
+        # But config might override buffer_minutes. 
+        # The spec requires 7 days minimum for the ring buffer.
+        # We enforce 7 days if persistence is enabled, or fallback to config.
+        if self.cfg.persistence_enabled:
+             buffer_items = int((7 * 24 * 60 * 60) / max(1, self.cfg.sample_interval_sec))
+        else:
+             buffer_items = int((self.cfg.buffer_minutes * 60) / max(1, self.cfg.sample_interval_sec))
+             
+        if self.cfg.persistence_enabled:
+            self.metrics_buf = SQLiteRingBuffer(self.cfg.db_path, "metrics", buffer_items, MetricSample)
+            self.events_buf = SQLiteRingBuffer(self.cfg.db_path, "events", 500, ChangeEventCard)
+            self.snaps_buf = SQLiteRingBuffer(self.cfg.db_path, "snapshots", 500, PreChangeSnapshot)
+        else:
+            self.metrics_buf = RingBuffer(maxlen=buffer_items)
+            self.events_buf = RingBuffer(maxlen=500)
+            self.snaps_buf = RingBuffer(maxlen=500)
 
         self.windowing = Windowing()
         self.recognition = RecognitionEngine()

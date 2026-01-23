@@ -42,39 +42,44 @@ class WindowsWifiAdapter(DomainAdapter):
 
         try:
             # Run netsh wlan show interfaces
-            output = subprocess.check_output("netsh wlan show interfaces", shell=True).decode("utf-8", errors="ignore")
+            # Use cp950 for Traditional Chinese Windows
+            raw_output = subprocess.check_output("netsh wlan show interfaces", shell=True)
+            try:
+                output = raw_output.decode("cp950", errors="ignore")
+            except:
+                output = raw_output.decode("utf-8", errors="ignore")
             
-            # Signal
-            match_sig = re.search(r"Signal\s*:\s*(\d+)%", output)
-            if match_sig:
-                signal = int(match_sig.group(1))
+            # Helper to find int value with multiple regex options
+            def find_int(patterns):
+                for p in patterns:
+                    m = re.search(p, output)
+                    if m: return int(m.group(1))
+                return None
 
-            # Channel
-            match_ch = re.search(r"Channel\s*:\s*(\d+)", output)
-            if match_ch:
-                channel = int(match_ch.group(1))
+            # Helper to find str value
+            def find_str(patterns):
+                for p in patterns:
+                    m = re.search(p, output)
+                    if m: return m.group(1).strip()
+                return None
 
-            # Radio Type
-            match_rad = re.search(r"Radio type\s*:\s*(.+)", output)
-            if match_rad:
-                radio_type = match_rad.group(1).strip()
+            # Signal (Signal / 信號 / 訊號 / 信号)
+            signal = find_int([r"Signal\s*:\s*(\d+)%", r"信號\s*:\s*(\d+)%", r"訊號\s*:\s*(\d+)%", r"信号\s*:\s*(\d+)%"]) or 0
 
-            # Band (infer from channel or find Band line if available, often Band is not explicit in all windows versions)
-            # Some output has "Band : 5 GHz"
-            match_band = re.search(r"Band\s*:\s*(.+)", output)
-            if match_band:
-                band = match_band.group(1).strip()
+            # Channel (Channel / 頻道 / 通道 / 频道)
+            channel = find_int([r"Channel\s*:\s*(\d+)", r"頻道\s*:\s*(\d+)", r"通道\s*:\s*(\d+)", r"频道\s*:\s*(\d+)"])
+
+            # Radio Type (Radio type / 無線電類型 / 無線電波類型 / 无线电类型)
+            radio_type = find_str([r"Radio type\s*:\s*(.+)", r"無線電類型\s*:\s*(.+)", r"無線電波類型\s*:\s*(.+)", r"无线电类型\s*:\s*(.+)"])
+
+            # Band (Band / 頻帶 / 频带)
+            band = find_str([r"Band\s*:\s*(.+)", r"頻帶\s*:\s*(.+)", r"频带\s*:\s*(.+)"])
             
             # Tx/Rx Rates
-            # "Transmit rate (Mbps) : 1201"
-            # "Receive rate (Mbps)  : 1201"
-            match_tx = re.search(r"Transmit rate \(Mbps\)\s*:\s*(\d+)", output)
-            if match_tx:
-                tx_rate = int(match_tx.group(1))
-            
-            match_rx = re.search(r"Receive rate \(Mbps\)\s*:\s*(\d+)", output)
-            if match_rx:
-                rx_rate = int(match_rx.group(1))
+            # "Transmit rate (Mbps) : 1201" / "傳輸速率 (Mbps) : 1201"
+            # "Receive rate (Mbps)  : 1201" / "接收速率 (Mbps) : 1201"
+            tx_rate = find_int([r"Transmit rate \(Mbps\)\s*:\s*(\d+)", r"傳輸速率 \(Mbps\)\s*:\s*(\d+)", r"传输速率 \(Mbps\)\s*:\s*(\d+)"])
+            rx_rate = find_int([r"Receive rate \(Mbps\)\s*:\s*(\d+)", r"接收速率 \(Mbps\)\s*:\s*(\d+)", r"接收速率 \(Mbps\)\s*:\s*(\d+)"])
 
         except Exception:
             pass

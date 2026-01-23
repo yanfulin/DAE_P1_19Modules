@@ -1,0 +1,33 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.local/dae/Manifest_V1.3.schema.json",
+    "title": "Manifest V1.3",
+    "type": "object",
+    "required": [
+        "manifest_ref",
+        "available_day_refs",
+        "available_event_refs",
+        "bundle_pointer"
+    ],
+    "properties": {
+        "manifest_ref": {
+            "type": "string"
+        },
+        "available_day_refs": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "available_event_refs": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "bundle_pointer": {
+            "type": "string"
+        }
+    },
+    "additionalProperties": true
+}

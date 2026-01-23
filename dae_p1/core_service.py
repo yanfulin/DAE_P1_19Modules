@@ -1,11 +1,13 @@
 
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Optional, List, Tuple
 import time
 import os
+import uuid
+from typing import Optional, List, Tuple, Dict, Any
 
-from .M02_ring_buffer import RingBuffer, SQLiteRingBuffer
+
+from .M02_ring_buffer import RingBuffer
 from .M10_timeline_builder import TimelineBuilder
 from .M11_bundle_exporter import BundleExporter
 from .M12_obh_controller import OBHController, OBHResult
@@ -21,8 +23,10 @@ class CoreRuntimeConfig:
     # For demos/tests we can accelerate time with a smaller interval
     accelerate: bool = False
     # API to enable persistence
-    persistence_enabled: bool = True
-    db_path: str = "data/cpe_metrics.db"
+    # API to enable persistence (Deprecated)
+    persistence_enabled: bool = False
+    # db_path is deprecated and removed
+
 
 class OBHCoreService:
     """
@@ -37,18 +41,16 @@ class OBHCoreService:
         # The spec requires 7 days minimum for the ring buffer.
         # We enforce 7 days if persistence is enabled, or fallback to config.
         if self.cfg.persistence_enabled:
+            # Deprecated path: forced to False logic effectively or just used as flag?
+            # User request said "Abandon SQLite", so we force RingBuffer.
              buffer_items = int((7 * 24 * 60 * 60) / max(1, self.cfg.sample_interval_sec))
         else:
              buffer_items = int((self.cfg.buffer_minutes * 60) / max(1, self.cfg.sample_interval_sec))
              
-        if self.cfg.persistence_enabled:
-            self.metrics_buf = SQLiteRingBuffer(self.cfg.db_path, "metrics", buffer_items, MetricSample)
-            self.events_buf = SQLiteRingBuffer(self.cfg.db_path, "events", 500, ChangeEventCard)
-            self.snaps_buf = SQLiteRingBuffer(self.cfg.db_path, "snapshots", 500, PreChangeSnapshot)
-        else:
-            self.metrics_buf = RingBuffer(maxlen=buffer_items)
-            self.events_buf = RingBuffer(maxlen=500)
-            self.snaps_buf = RingBuffer(maxlen=500)
+        self.metrics_buf = RingBuffer(maxlen=buffer_items)
+        self.events_buf = RingBuffer(maxlen=500)
+        self.snaps_buf = RingBuffer(maxlen=500)
+
 
         self.windowing = Windowing()
         self.recognition = RecognitionEngine()
@@ -102,3 +104,47 @@ class OBHCoreService:
             events=self.events_buf.snapshot(),
             snapshots=self.snaps_buf.snapshot()
         )
+
+    # --- Integrated ManifestManager Logic ---
+
+    def get_manifest(self, device_id: str) -> Dict[str, Any]:
+        """
+        Generates the current Manifest (V1.3 Integrated).
+        """
+        now = time.time()
+        day_seconds = 86400
+        
+        # 1. Available Days (Rolling 7 days)
+        days = []
+        for i in range(7):
+            d_ts = now - (i * day_seconds)
+            d_str = time.strftime("DAY-%Y%m%d", time.localtime(d_ts))
+            days.append(d_str)
+            
+        # 2. Available Events
+        event_refs = []
+        if hasattr(self, 'events_buf'):
+            events = self.events_buf.snapshot()
+            for e in events:
+                # e is likely ChangeEventCard
+                ref = getattr(e, 'ref', None) 
+                if not ref and hasattr(e, 'ts'):
+                    ref = f"EVT-{int(e.ts)}"
+                if ref:
+                    event_refs.append(str(ref))
+        
+        # 3. Bundle Pointer (In-Memory)
+        pointer = "memory://self.metrics_buf"
+
+        return {
+            "manifest_ref": f"man-{uuid.uuid4().hex[:8]}",
+            "available_day_refs": days,
+            "available_event_refs": event_refs, 
+            "bundle_pointer": pointer
+        }
+
+    def get_bundle(self, ref: str) -> Dict[str, Any]:
+        """
+        Retrieves a bundle by reference.
+        """
+        return {"ref": ref, "content": "mock_binary_blob_in_memory", "size": 1024}

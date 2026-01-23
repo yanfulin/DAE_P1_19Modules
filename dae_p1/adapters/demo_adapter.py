@@ -13,6 +13,7 @@ class DemoAdapter(DomainAdapter):
     def __init__(self):
         self.sim = DemoSimulator()
         self.t = 0
+        self.overrides = {}
 
     def collect_metric_sample(self) -> MetricSample:
         # Check defaults

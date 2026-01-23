@@ -61,7 +61,7 @@ async def lifespan(app: FastAPI):
     cfg = CoreRuntimeConfig(sample_interval_sec=1, buffer_minutes=60, accelerate=True, persistence_enabled=True)
     core = OBHCoreService(adapter, cfg)
     
-    manifest_manager = ManifestManager(core.metrics_buf)
+    manifest_manager = ManifestManager(core)
 
     background_task = asyncio.create_task(run_core_loop())
     

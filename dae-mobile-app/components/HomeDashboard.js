@@ -5,18 +5,18 @@ export default function HomeDashboard({ onNavigate }) {
 
     const menuItems = [
         {
+            id: 'PROOF',
+            title: 'View Proof Card',
+            desc: 'Generate V1.3 Proof Card',
+            color: '#9C27B0',
+            icon: '📜'
+        },
+        {
             id: 'INSTALL',
             title: 'Installation Verifier',
             desc: 'Validate install quality & readiness',
             color: '#4CAF50',
             icon: '✓'
-        },
-        {
-            id: 'SIMULATE',
-            title: 'Simulate Incident',
-            desc: 'Inject faults to test detection',
-            color: '#FF9500',
-            icon: '⚠'
         },
         {
             id: 'OBH',
@@ -33,11 +33,11 @@ export default function HomeDashboard({ onNavigate }) {
             icon: '📱'
         },
         {
-            id: 'PROOF',
-            title: 'View Proof Card',
-            desc: 'Generate V1.3 Proof Card',
-            color: '#9C27B0',
-            icon: '📜'
+            id: 'SIMULATE',
+            title: 'Simulate Incident',
+            desc: 'Inject faults to test detection',
+            color: '#FF9500',
+            icon: '⚠'
         }
     ];
 

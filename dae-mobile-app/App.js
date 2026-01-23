@@ -42,7 +42,7 @@ export default function App() {
 
   const navigateBack = () => {
     if (currentScreen === 'PROOF') {
-      setCurrentScreen('DRILLDOWN');
+      setCurrentScreen('HOME');
     } else if (currentScreen === 'DRILLDOWN') {
       setCurrentScreen('FLEET');
       setSelectedDeviceId(null);

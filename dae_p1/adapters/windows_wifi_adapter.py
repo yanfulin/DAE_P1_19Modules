@@ -45,9 +45,15 @@ class WindowsWifiAdapter(DomainAdapter):
             # Use cp950 for Traditional Chinese Windows
             raw_output = subprocess.check_output("netsh wlan show interfaces", shell=True)
             try:
-                output = raw_output.decode("cp950", errors="ignore")
-            except:
-                output = raw_output.decode("utf-8", errors="ignore")
+                # Try UTF-8 strict first (common in localized Windows environments)
+                output = raw_output.decode("utf-8")
+            except UnicodeError:
+                try:
+                    # Try CP950 strict
+                    output = raw_output.decode("cp950")
+                except UnicodeError:
+                    # Fallback to loose CP950 or UTF-8
+                    output = raw_output.decode("cp950", errors="ignore")
             
             # Helper to find int value with multiple regex options
             def find_int(patterns):

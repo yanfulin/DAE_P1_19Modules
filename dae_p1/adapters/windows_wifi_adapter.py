@@ -174,8 +174,13 @@ class WindowsWifiAdapter(DomainAdapter):
             # Check if we have an active simulation type
             if 'simulation_type' in self.overrides:
                 # Use M17 logic to generate chaos
-                sim_type = self.overrides['simulation_type']['value']
-                sim_metrics = self.sim.generate_metrics_only(sim_type)
+                sim_data = self.overrides['simulation_type']
+                sim_type = sim_data['value']
+                start_time = sim_data.get('start', 0)
+                elapsed = now - start_time
+                if elapsed < 0: elapsed = 0
+                
+                sim_metrics = self.sim.generate_metrics_only(sim_type, elapsed_time=elapsed)
             
         # Collect
         # Helper to get override or actual

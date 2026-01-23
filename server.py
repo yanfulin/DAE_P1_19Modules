@@ -464,9 +464,9 @@ def simulate_incident(type: str = "latency", duration: int = 30):
     import time
     until = time.time() + duration
     
-    if type in ["latency", "retry", "airtime", "complex"]:
+    if type in ["latency", "retry", "airtime", "complex", "stable", "oscillating", "degrading"]:
         # New simplified logic: Delegate to M17 via adapter
-        core.adapter.overrides['simulation_type'] = {"value": type, "until": until}
+        core.adapter.overrides['simulation_type'] = {"value": type, "until": until, "start": time.time()}
     else:
         return {"error": "Unknown incident type"}
         

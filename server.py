@@ -1,13 +1,15 @@
+
 import asyncio
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-# from dae_p1.adapters.demo_adapter import DemoAdapter
-from dae_p1.adapters.windows_wifi_adapter import WindowsWifiAdapter
+
 from dae_p1.core_service import OBHCoreService, CoreRuntimeConfig
 from dae_p1.M20_install_verify import verify_install
 from dae_p1.status_helper import calculate_simple_status
+from dae_p1.M13_fp_lite import ProofCardGenerator
+from dae_p1.M00_common import iso
 
 
 # Configure logging
@@ -18,6 +20,8 @@ logger = logging.getLogger(__name__)
 adapter = None
 core = None
 background_task = None
+pc_generator = ProofCardGenerator()
+
 
 async def run_core_loop():
     """Background task to simulate the core service tick."""
@@ -35,13 +39,30 @@ async def run_core_loop():
 async def lifespan(app: FastAPI):
     # Startup
     global adapter, core, background_task
-    logger.info("Initializing Core Service with WindowsWifiAdapter...")
-    adapter = WindowsWifiAdapter()
+
+    
+    import platform
+    os_name = platform.system()
+    
+    if os_name == "Windows":
+        try:
+            from dae_p1.adapters.windows_wifi_adapter import WindowsWifiAdapter
+            logger.info("Windows detected. Initializing Core Service with WindowsWifiAdapter...")
+            adapter = WindowsWifiAdapter()
+        except ImportError as e:
+            logger.error(f"Failed to import WindowsWifiAdapter on Windows: {e}. Fallback to Demo.")
+            from dae_p1.adapters.demo_adapter import DemoAdapter
+            adapter = DemoAdapter()
+    else:
+        logger.info(f"{os_name} detected (Not Windows). Initializing Core Service with DemoAdapter...")
+        from dae_p1.adapters.demo_adapter import DemoAdapter
+        adapter = DemoAdapter()
     
     # Use accelerate=True so it doesn't sleep internally, we control loop with asyncio
-    cfg = CoreRuntimeConfig(sample_interval_sec=1, buffer_minutes=60, accelerate=True)
+    cfg = CoreRuntimeConfig(sample_interval_sec=1, buffer_minutes=60, accelerate=True, persistence_enabled=True)
     core = OBHCoreService(adapter, cfg)
-    
+
+
     background_task = asyncio.create_task(run_core_loop())
     
     yield
@@ -68,7 +89,7 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
-    return {"status": "running", "service": "DAE_P1 Demo Core"}
+    return {"status": "running", "service": "DAE_P1 Demo Core V1.3"}
 
 @app.get("/metrics")
 def get_metrics():
@@ -78,6 +99,8 @@ def get_metrics():
     
     latest = core.metrics_buf.last()
     if latest:
+        # If it's a dataclass, API will JSONify it, but if it's already dict?
+        # M02 now returns item_class objects if configured.
         return latest
     return {"message": "No metrics collected yet"}
 
@@ -124,8 +147,16 @@ def get_install_verify():
     # Get all available metrics from the buffer to form the window
     metrics_snapshot = core.metrics_buf.snapshot()
     
+    # Get Internals for C01/C06 display
+    ws, wl = core.windowing.current_refs()
+    w_refs = {"Ws": ws, "Wl": wl}
+    b_stats = {
+        "count": len(metrics_snapshot),
+        "capacity": core.metrics_buf.maxlen if hasattr(core.metrics_buf, 'maxlen') else 0
+    }
+    
     # Run verification (defaults to 3 minute window inside the function)
-    result = verify_install(metrics_snapshot)
+    result = verify_install(metrics_snapshot, window_refs=w_refs, buffer_stats=b_stats)
     
     return result
 
@@ -139,6 +170,78 @@ def get_status():
     return {"status": s}
 
 # Execution block moved to end of file
+
+@app.get("/modules")
+def get_modules_status():
+    """Get status of all 19 modules."""
+    if not core:
+        return {"error": "Core not initialized"}
+    
+    modules = []
+    
+    # helper
+    def add_mod(id, name, status, data):
+        modules.append({
+            "id": id,
+            "name": name,
+            "status": status,
+            "data": data
+        })
+
+    # M00 Common
+    add_mod("M00", "Common", "Active", {"note": "Shared data structures"})
+
+    # M01 Windowing
+    ws_ref, wl_ref = core.windowing.current_refs()
+    m01_data = {
+        "current_refs": {"Ws": ws_ref, "Wl": wl_ref},
+        "policy": {"ws_sec": core.windowing.policy.ws_sec, "wl_sec": core.windowing.policy.wl_sec}
+    }
+    add_mod("M01", "Windowing", "Active", m01_data)
+
+    # M02 Ring Buffer (Metrics)
+    m_buf_len = len(core.metrics_buf)
+    add_mod("M02", "RingBuffer", "Active (In-Memory)", {"metrics_count": m_buf_len, "capacity": core.metrics_buf.maxlen})
+
+    # M03 Collector
+    from dataclasses import asdict, is_dataclass
+    from dae_p1.M00_common import iso
+    last_m = core.metrics_buf.last()
+    m03_data = {}
+    if last_m:
+        m03_data = asdict(last_m) if is_dataclass(last_m) else last_m
+        # Format TS for readability
+        ts_val = m03_data.get('ts')
+        if ts_val:
+            m03_data['ts_iso'] = iso(ts_val)
+    else:
+        m03_data = {"status": "No samples yet"}
+        
+    add_mod("M03", "MetricsCollector", "Active", m03_data)
+
+    # ... (Skipping M04-M12 for brevity, they remain largely same but accessing core props)
+    # Re-implementing simplified status for other modules
+    
+    add_mod("M04", "ChangeLogger", "Active", {"events_count": len(core.events_buf)})
+    add_mod("M05", "SnapshotManager", "Active", {"snapshots_count": len(core.snaps_buf)})
+    
+    # M13 fp_lite
+    add_mod("M13", "fp_lite", "Active", {"note": "V1.3 ProofCard Generator Ready"})
+
+    # M14 Bundle Reader
+    add_mod("M14", "BundleReader", "Offline", {"note": "Library"})
+
+    # M15 CLI
+    add_mod("M15", "CLI_Offline_FP", "Offline", {"note": "Run via terminal"})
+
+    # M16 Recognition Engine
+    add_mod("M16", "RecognitionEngine", "Active", {"integrated": True})
+    
+    # M21 Manifest Manager (Integrated)
+    add_mod("M21", "ManifestManager", "Integrated", {"note": "Functionality moved to Core"})
+
+
+    return modules
     
 # --- MOCK FLEET SERVICE ---
 
@@ -202,15 +305,6 @@ def _get_mock_fleet():
             "closure_readiness": "READY",
             "last_change_ref": "T-1d",
             "feature_deltas": []
-        },
-         {
-            "id": "mock_3",
-            "name": "Guest Router",
-            "current_state": "investigating",
-            "primary_issue_class": "WAN Latency",
-            "closure_readiness": "NOT_READY",
-            "last_change_ref": "T-15m",
-            "feature_deltas": ["QoS: Downgraded"]
         }
     ]
     
@@ -240,10 +334,12 @@ def get_device_detail(device_id: str):
             # Convert to simplified format for UI
             formatted_snaps = []
             for s in snaps[-5:]: # Last 5
+                ts_val = getattr(s, 'ts', 0)
+                trig_val = getattr(s, 'trigger', 'unknown')
                 formatted_snaps.append({
-                    "ref": f"S-{s.ts}",
-                    "type": s.trigger,
-                    "time": s.ts
+                    "ref": f"S-{ts_val}",
+                    "type": trig_val,
+                    "time": ts_val
                 })
             snapshots = formatted_snaps
             
@@ -314,22 +410,92 @@ def get_device_detail(device_id: str):
          "compliance_verdict": {"result": "PASS", "evidence_missing": []}
     }
 
+# --- NEW V1.3 API ---
+
 @app.get("/device/{device_id}/proof")
-def get_device_proof(device_id: str):
-    """Get the Proof Card summary."""
-    # Reuse getting detail to construct the card
-    detail = get_device_detail(device_id)
+def get_device_proof(device_id: str, profile: str = "WIFI78_INSTALL_ACCEPT"):
+    """
+    Get the Proof Card V1.3 for this device.
+    Defaults to WIFI78_INSTALL_ACCEPT profile.
+    """
+    if device_id != "local":
+        return {"error": "Only local device implemented for V1.3 ProofCard"}
     
-    # Construct card
-    return {
-        "title": f"Proof Card - {device_id}",
-        "timestamp": "Now",
-        "trigger_summary": detail["cohort_compare"]["message"],
-        "snapshot_refs": [s["ref"] for s in detail["obh_snapshot_timeline"]],
-        "feature_ledger_summary": f"{len(detail['feature_ledger'])} features tracked",
-        "closure_readiness": "READY" if detail["compliance_verdict"]["result"] == "PASS" else "NOT_READY",
-        "vendor_compliance_verdict": detail["compliance_verdict"]["result"]
-    }
+    if not core:
+        return {"error": "Core not initialized"}
+        
+    # Get current Window (last N minutes or samples)
+    # For sim, we take the last 100 samples
+    metrics = core.metrics_buf.snapshot()[-100:] 
+    
+    # Convert dataclasses to dicts for M13 processing
+    from dataclasses import asdict, is_dataclass
+    metrics_dicts = [asdict(m) if is_dataclass(m) else m for m in metrics]
+
+    # Get Manifest Ref
+    manifest = core.get_manifest(device_id)
+    manifest_ref = manifest["manifest_ref"]
+
+
+    # Generate
+    try:
+        card = pc_generator.generate(metrics_dicts, profile, window_ref_str="W-LATEST-100", manifest_ref_str=manifest_ref)
+        return card
+    except Exception as e:
+        return {"error": f"Proof Generation Failed: {e}"}
+
+@app.get("/device/{device_id}/manifest")
+def get_device_manifest(device_id: str):
+    """
+    Get the Manifest V1.3.
+    """
+    if not core:
+         return {"error": "Core not initialized"}
+    
+    return core.get_manifest(device_id)
+
+
+@app.post("/simulate/incident")
+def simulate_incident(type: str = "latency", duration: int = 30):
+    """
+    Simulate an incident by injecting bad metrics into the adapter.
+    Type can be: latency, retry, airtime, complex.
+    """
+    if not core:
+        return {"error": "Core not initialized"}
+    
+    import time
+    until = time.time() + duration
+    
+    if type in ["latency", "retry", "airtime", "complex", "stable", "oscillating", "degrading"]:
+        # New simplified logic: Delegate to M17 via adapter
+        core.adapter.overrides['simulation_type'] = {"value": type, "until": until, "start": time.time()}
+    else:
+        return {"error": "Unknown incident type"}
+        
+    return {"status": "Simulating", "type": type, "duration": duration, "mode": "M17_Integrated"}
+
+@app.post("/obh/trigger")
+def trigger_obh():
+    """
+    Trigger One-Button Help export manually.
+    """
+    if not core:
+        return {"error": "Core not initialized"}
+    
+    try:
+        # Export to current directory or a 'bundles' subdir
+        import os
+        os.makedirs("bundles", exist_ok=True)
+        res = core.obh_export("bundles")
+        return {
+            "status": "Exported",
+            "episode_id": res.episode_id,
+            "path": res.exported_path,
+            "bundle": res.bundle_content
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn

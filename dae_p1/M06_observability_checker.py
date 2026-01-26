@@ -15,7 +15,16 @@ class ObservabilityChecker:
             missing.append("origin_hint")
         if not ev.change_ref:
             missing.append("change_ref")
-        if not ev.version_refs or (ev.version_refs.fw == "unknown" and ev.version_refs.driver == "unknown"):
+        # Safe access helper
+        def get_ver(vrefs, attr):
+            if isinstance(vrefs, dict):
+                return vrefs.get(attr, "unknown")
+            return getattr(vrefs, attr, "unknown")
+
+        v_fw = get_ver(ev.version_refs, "fw")
+        v_driver = get_ver(ev.version_refs, "driver")
+
+        if not ev.version_refs or (v_fw == "unknown" and v_driver == "unknown"):
             missing.append("version_refs")
 
         insufficient = len(missing) > 0

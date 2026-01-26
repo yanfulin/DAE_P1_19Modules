@@ -14,3 +14,8 @@ venv/
 out/
 TEST_REPORT.md
 TEST_REPORT_10RUNS.md
+server_log.txt
+expo_log.txt
+bundles/
+data/cpe_metrics.db
+data/

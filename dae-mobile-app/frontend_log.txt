@@ -1,0 +1,17 @@
+
+> dae-mobile-app@1.0.0 start
+> expo start
+
+Starting project at /Users/yanfulin/VSprojects/DAE_P1_19Modules/dae-mobile-app
+Starting Metro Bundler
+The following packages should be updated for best compatibility with the installed expo version:
+  react-native-svg@15.15.1 - expected version: 15.12.1
+Your project may not work correctly until you install the expected versions of the packages.
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 1512ms index.js (278 modules)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 22ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console

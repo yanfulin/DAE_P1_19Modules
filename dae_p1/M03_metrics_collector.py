@@ -26,7 +26,15 @@ class MetricsCollector:
                 out_rate: Optional[float]=None,
                 cpu_load: Optional[float]=None,
                 mem_load: Optional[float]=None,
-                signal_strength_pct: Optional[int]=None) -> MetricSample:
+                signal_strength_pct: Optional[int]=None,
+                # Extended
+                channel: Optional[int]=None,
+                bssid: Optional[str]=None,
+                radio_type: Optional[str]=None,
+                band: Optional[str]=None,
+                phy_rate_mbps: Optional[int]=None,
+                phy_rx_rate_mbps: Optional[int]=None,
+                dns_status: Optional[str]=None) -> MetricSample:
         ts = now_ts()
         ws = self.windowing.window_ref(ts, "Ws")
         return MetricSample(
@@ -39,5 +47,9 @@ class MetricsCollector:
             jitter_ms=jitter_ms,
             in_rate=in_rate, out_rate=out_rate,
             cpu_load=cpu_load, mem_load=mem_load,
-            signal_strength_pct=signal_strength_pct
+            signal_strength_pct=signal_strength_pct,
+            # Extended
+            channel=channel, bssid=bssid, radio_type=radio_type, band=band,
+            phy_rate_mbps=phy_rate_mbps, phy_rx_rate_mbps=phy_rx_rate_mbps,
+            dns_status=dns_status
         )

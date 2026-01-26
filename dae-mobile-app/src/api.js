@@ -1,5 +1,5 @@
-// export const API_BASE_URL = 'http://localhost:8000';
-export const API_BASE_URL = 'https://dae-p1-19-modules.vercel.app';
+export const API_BASE_URL = 'http://localhost:8000';
+// export const API_BASE_URL = 'https://dae-p1-19-modules.vercel.app';
 // Note: If testing on a physical device, replace 'localhost' with your PC's IP address (e.g., 192.168.1.x)
 
 export const fetchMetrics = async () => {
@@ -88,6 +88,40 @@ export const fetchProofData = async (deviceId) => {
         return await response.json();
     } catch (error) {
         console.error(`Error fetching proof for ${deviceId}:`, error);
+        return null;
+    }
+};
+
+export const fetchManifest = async (deviceId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/device/${deviceId}/manifest`);
+        return await response.json();
+    } catch (error) {
+        console.error(`Error fetching manifest for ${deviceId}:`, error);
+        return null;
+    }
+};
+
+export const simulateIncident = async (type, duration) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/simulate/incident?type=${type}&duration=${duration}`, {
+            method: 'POST'
+        });
+        return await response.json();
+    } catch (error) {
+        console.error("Error simulating incident:", error);
+        return null;
+    }
+};
+
+export const triggerOBH = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/obh/trigger`, {
+            method: 'POST'
+        });
+        return await response.json();
+    } catch (error) {
+        console.error("Error triggering OBH:", error);
         return null;
     }
 };

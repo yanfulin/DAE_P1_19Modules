@@ -1,0 +1,15 @@
+{
+  "verify_window_sec": 180,
+  "sample_count": 19,
+  "readiness_verdict": "MARGINAL",
+  "closure_readiness": "not_ready",
+  "dominant_factor": "UNKNOWN",
+  "confidence": 0.7,
+  "fp_vector": {
+    "latency_p95_ms": 94.75544746800765,
+    "retry_pct": 5.317474349802285,
+    "airtime_busy_pct": 39.906422520188706,
+    "mesh_flap_count": 0.5789473684210527,
+    "wan_sinr_db": 13.430639166377608
+  }
+}

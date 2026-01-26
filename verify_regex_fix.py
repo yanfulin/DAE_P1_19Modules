@@ -1,0 +1,49 @@
+import unittest
+from unittest.mock import MagicMock, patch
+from dae_p1.adapters.windows_wifi_adapter import WindowsWifiAdapter
+
+class TestWindowsWifiAdapter(unittest.TestCase):
+    def test_regex_parsing(self):
+        # Sample output from user's system
+        sample_output = """
+系統上有 1 個介面: 
+
+    名稱                   : Wi-Fi
+    描述            : Intel(R) Wi-Fi 6E AX211 160MHz
+    GUID                   : 853bdb24-b637-4317-ad3a-ed5ac5f9e3f6
+    實體位址       : 00:93:37:7a:4e:eb
+    介面類型         : 主介面
+    狀態                  : 連線
+    SSID                   : ubee
+    AP BSSID               : 34:8f:27:5b:af:6d
+    頻帶                   : 5 GHz
+    通道                : 108
+    網路類型               : 基礎結構
+    無線電波類型           : 802.11ac
+    驗證                   : 開啟
+    加密方式               : 無
+    連線模式               : 自動連線
+    接收速率 (Mbps)        : 400
+    傳輸速率 (Mbps)        : 400
+    訊號                   : 87% 
+    Rssi                   : -53
+    設定檔                 : ubee 
+    已設定     QoS MSCS： 0
+    已設定 QoS 對應 ： 0
+    原則允許的 QoS 對應 ： 0
+"""
+        with patch('subprocess.check_output', return_value=sample_output.encode('cp950')): # Mock as cp950 for Windows
+            adapter = WindowsWifiAdapter()
+            signal, channel, radio, band, tx, rx = adapter._get_signal_strength()
+            
+            print(f"Parsed: Signal={signal}, Channel={channel}, Radio={radio}, Band={band}, Tx={tx}, Rx={rx}")
+            
+            self.assertEqual(signal, 87)
+            self.assertEqual(channel, 108)
+            self.assertEqual(radio, "802.11ac")
+            self.assertEqual(band, "5 GHz")
+            self.assertEqual(tx, 400)
+            self.assertEqual(rx, 400)
+
+if __name__ == '__main__':
+    unittest.main()

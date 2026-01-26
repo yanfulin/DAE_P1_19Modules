@@ -52,6 +52,14 @@ class MetricSample:
     cpu_load: Optional[float] = None
     mem_load: Optional[float] = None
     signal_strength_pct: Optional[int] = None
+    # Extended metrics for Install Verify
+    phy_rate_mbps: Optional[int] = None # Transmit Rate
+    phy_rx_rate_mbps: Optional[int] = None # Receive Rate
+    channel: Optional[int] = None
+    bssid: Optional[str] = None
+    radio_type: Optional[str] = None
+    band: Optional[str] = None
+    dns_status: Optional[str] = None # OK / FAIL
 
 @dataclass
 class ChangeEventCard:
@@ -63,6 +71,10 @@ class ChangeEventCard:
     change_ref: Optional[str] = None
     version_refs: VersionRefs = field(default_factory=VersionRefs)
     window_ref: Optional[str] = None
+
+    def __post_init__(self):
+        if isinstance(self.version_refs, dict):
+            self.version_refs = VersionRefs(**self.version_refs)
 
 @dataclass
 class PreChangeSnapshot:

@@ -15,6 +15,7 @@ class RingBuffer(Generic[T]):
     Fixed-size ring buffer. Stores latest N items.
     """
     def __init__(self, maxlen: int):
+        self.maxlen = maxlen
         self._dq = deque(maxlen=maxlen)
 
     def append(self, item: T) -> None:
@@ -32,6 +33,7 @@ class RingBuffer(Generic[T]):
 class SQLiteRingBuffer(Generic[T]):
     """
     Persistent Ring Buffer using SQLite.
+    DEPRECATED: Usage replaced by in-memory RingBuffer. Use with caution.
     Stores up to `maxlen` items, strictly ordered by timestamp.
     Handles Dataclasses by converting to dict before JSON serialization.
     """

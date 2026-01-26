@@ -9,8 +9,8 @@ from dae_p1.core_service import OBHCoreService, CoreRuntimeConfig
 from dae_p1.M20_install_verify import verify_install
 from dae_p1.status_helper import calculate_simple_status
 from dae_p1.M13_fp_lite import ProofCardGenerator
-from dae_p1.M21_manifest_manager import ManifestManager
 from dae_p1.M00_common import iso
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +21,7 @@ adapter = None
 core = None
 background_task = None
 pc_generator = ProofCardGenerator()
-manifest_manager = None
+
 
 async def run_core_loop():
     """Background task to simulate the core service tick."""
@@ -38,7 +38,8 @@ async def run_core_loop():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    global adapter, core, background_task, manifest_manager
+    global adapter, core, background_task
+
     
     import platform
     os_name = platform.system()
@@ -60,8 +61,7 @@ async def lifespan(app: FastAPI):
     # Use accelerate=True so it doesn't sleep internally, we control loop with asyncio
     cfg = CoreRuntimeConfig(sample_interval_sec=1, buffer_minutes=60, accelerate=True, persistence_enabled=True)
     core = OBHCoreService(adapter, cfg)
-    
-    manifest_manager = ManifestManager(core)
+
 
     background_task = asyncio.create_task(run_core_loop())
     
@@ -201,7 +201,7 @@ def get_modules_status():
 
     # M02 Ring Buffer (Metrics)
     m_buf_len = len(core.metrics_buf)
-    add_mod("M02", "RingBuffer", "Active (SQLite)", {"metrics_count": m_buf_len, "capacity": core.metrics_buf.maxlen})
+    add_mod("M02", "RingBuffer", "Active (In-Memory)", {"metrics_count": m_buf_len, "capacity": core.metrics_buf.maxlen})
 
     # M03 Collector
     from dataclasses import asdict, is_dataclass
@@ -237,8 +237,9 @@ def get_modules_status():
     # M16 Recognition Engine
     add_mod("M16", "RecognitionEngine", "Active", {"integrated": True})
     
-    # M21 Manifest Manager
-    add_mod("M21", "ManifestManager", "Active", {"db": core.cfg.db_path})
+    # M21 Manifest Manager (Integrated)
+    add_mod("M21", "ManifestManager", "Integrated", {"note": "Functionality moved to Core"})
+
 
     return modules
     
@@ -432,8 +433,9 @@ def get_device_proof(device_id: str, profile: str = "WIFI78_INSTALL_ACCEPT"):
     metrics_dicts = [asdict(m) if is_dataclass(m) else m for m in metrics]
 
     # Get Manifest Ref
-    manifest = manifest_manager.get_manifest(device_id)
+    manifest = core.get_manifest(device_id)
     manifest_ref = manifest["manifest_ref"]
+
 
     # Generate
     try:
@@ -447,10 +449,11 @@ def get_device_manifest(device_id: str):
     """
     Get the Manifest V1.3.
     """
-    if not manifest_manager:
-         return {"error": "Manifest Manager not initialized"}
+    if not core:
+         return {"error": "Core not initialized"}
     
-    return manifest_manager.get_manifest(device_id)
+    return core.get_manifest(device_id)
+
 
 @app.post("/simulate/incident")
 def simulate_incident(type: str = "latency", duration: int = 30):

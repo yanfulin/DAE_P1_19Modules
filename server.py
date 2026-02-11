@@ -1,9 +1,12 @@
 
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from dae_p1.core_service import OBHCoreService, CoreRuntimeConfig
 from dae_p1.M20_install_verify import verify_install
@@ -585,6 +588,31 @@ def trigger_obh():
         }
     except Exception as e:
         return {"error": str(e)}
+
+# --- STATIC FILE SERVING (Expo Web Build) ---
+_frontend_dist = os.path.join(os.path.dirname(__file__), "dae-mobile-app", "dist")
+
+if os.path.isdir(_frontend_dist):
+    # Serve _expo static assets
+    _expo_dir = os.path.join(_frontend_dist, "_expo")
+    if os.path.isdir(_expo_dir):
+        app.mount("/_expo", StaticFiles(directory=_expo_dir), name="expo_static")
+
+    # Serve other static files (favicon, etc.)
+    @app.get("/favicon.ico")
+    def favicon():
+        return FileResponse(os.path.join(_frontend_dist, "favicon.ico"))
+
+    # SPA fallback: serve index.html for any non-API route
+    @app.get("/{full_path:path}")
+    def serve_spa(full_path: str):
+        # If the file exists in dist, serve it
+        file_path = os.path.join(_frontend_dist, full_path)
+        if full_path and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        # Otherwise serve index.html (SPA routing)
+        return FileResponse(os.path.join(_frontend_dist, "index.html"))
+
 
 if __name__ == "__main__":
     import uvicorn

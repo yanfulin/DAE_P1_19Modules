@@ -1,0 +1,194 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.local/dae/ProofCard_V1.4.schema.json",
+    "title": "ProofCard V1.4",
+    "description": "ProofCard V1.4 with Privacy/Admissibility framework (PC-Min/PC-Priv split)",
+    "type": "object",
+    "required": [
+        "proof_card_ref",
+        "attempt_id",
+        "profile_ref",
+        "verdict",
+        "evidence_grade",
+        "window_ref",
+        "reason_code",
+        "enforcement_path_ref",
+        "enforcement_path_id",
+        "gate_ref",
+        "authority_scope_ref",
+        "validity_horizon_ref",
+        "validity_verdict",
+        "basis_ref",
+        "sample_count",
+        "outcome_facet",
+        "evidence_bundle_ref",
+        "manifest_ref",
+        "min"
+    ],
+    "properties": {
+        "proof_card_ref": {
+            "type": "string",
+            "description": "Globally unique card ID (ULID/UUID)"
+        },
+        "attempt_id": {
+            "type": "string",
+            "description": "Attempt ID linking this card to the pipeline attempt"
+        },
+        "profile_ref": {
+            "type": "string",
+            "description": "Profile used for this assessment"
+        },
+        "enforcement_path_id": {
+            "type": "string",
+            "description": "Non-bypassable enforcement path reference"
+        },
+        "gate_ref": {
+            "type": "string",
+            "description": "Gate/admission reference"
+        },
+        "verdict": {
+            "type": "string",
+            "enum": ["READY", "NOT_READY", "INSUFFICIENT_EVIDENCE"],
+            "description": "Primary V1.3 verdict (three-state)"
+        },
+        "evidence_grade": {
+            "type": "string",
+            "enum": ["DELIVERY_GRADE", "PARTIAL_RELIANCE", "NOT_CLOSURE_GRADE"],
+            "description": "V1.4 evidence grade after privacy/BYUSE evaluation"
+        },
+        "window_ref": {
+            "type": "string"
+        },
+        "reason_code": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+        },
+        "version_refs": {
+            "type": "object",
+            "properties": {
+                "policy_snapshot_ref": { "type": "string" },
+                "window_policy_id": { "type": "string" },
+                "mapping_config_id": { "type": "string" },
+                "normalization_ref": { "type": "string" },
+                "translation_basis_id": { "type": "string" }
+            },
+            "additionalProperties": true
+        },
+        "missing_evidence_class": {
+            "type": "array",
+            "items": { "type": "string" }
+        },
+        "upgrade_requirements_ref": {
+            "type": ["string", "null"]
+        },
+        "enforcement_path_ref": {
+            "type": "string"
+        },
+        "authority_scope_ref": {
+            "type": "string"
+        },
+        "validity_horizon_ref": {
+            "type": "string"
+        },
+        "validity_verdict": {
+            "type": "string",
+            "enum": ["VALID", "STALE", "OUT_OF_SCOPE", "COMPROMISED", "UNKNOWN"]
+        },
+        "basis_ref": {
+            "type": "string"
+        },
+        "sample_count": {
+            "type": "integer"
+        },
+        "p50": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["name", "value", "unit"],
+                "properties": {
+                    "name": { "type": "string" },
+                    "value": { "type": "number" },
+                    "unit": { "type": "string" }
+                }
+            }
+        },
+        "p95": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["name", "value", "unit"],
+                "properties": {
+                    "name": { "type": "string" },
+                    "value": { "type": "number" },
+                    "unit": { "type": "string" }
+                }
+            }
+        },
+        "outcome_facet": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["name", "value", "unit"],
+                "properties": {
+                    "name": { "type": "string" },
+                    "value": { "type": "number" },
+                    "unit": { "type": "string" }
+                }
+            },
+            "minItems": 1
+        },
+        "event_type": {
+            "type": "array",
+            "items": { "type": "string" }
+        },
+        "evidence_bundle_ref": {
+            "type": "string"
+        },
+        "manifest_ref": {
+            "type": "string"
+        },
+        "min": {
+            "type": "object",
+            "description": "PC-Min section: cross-vendor, exportable by default",
+            "required": ["admission_verdict", "privacy_check_verdict"],
+            "properties": {
+                "admission_verdict": {
+                    "type": "string",
+                    "enum": ["ADMIT", "DENY", "DEGRADE"]
+                },
+                "admission_effect": {
+                    "type": "string",
+                    "enum": ["NONE", "SLOW_MODE", "SCOPE_REDUCTION", "EGRESS_MIN_ONLY", "FREEZE_EGRESS"]
+                },
+                "privacy_check_verdict": {
+                    "type": "string",
+                    "enum": ["PASS", "FAIL", "INCONCLUSIVE", "NOT_APPLICABLE"]
+                },
+                "egress_receipt_ref": {
+                    "type": ["string", "null"]
+                },
+                "byuse_context_ref": {
+                    "type": ["string", "null"]
+                }
+            }
+        },
+        "priv": {
+            "type": "object",
+            "description": "PC-Priv section: internal/controlled, NOT exportable by default",
+            "properties": {
+                "privacy_policy_ref": { "type": ["string", "null"] },
+                "purpose_ref": { "type": ["string", "null"] },
+                "retention_ref": { "type": ["string", "null"] },
+                "disclosure_scope_ref": { "type": ["string", "null"] },
+                "redaction_profile_ref": { "type": ["string", "null"] },
+                "privacy_violation_flag": { "type": "boolean" },
+                "privacy_violation_reason_code": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                }
+            }
+        }
+    },
+    "additionalProperties": true
+}

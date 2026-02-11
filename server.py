@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dae_p1.core_service import OBHCoreService, CoreRuntimeConfig
 from dae_p1.M20_install_verify import verify_install
 from dae_p1.status_helper import calculate_simple_status
-from dae_p1.M13_fp_lite import ProofCardGenerator
+from dae_p1.M13_fp_lite import ProofCardGenerator, ProofCardGeneratorV14
 from dae_p1.M00_common import iso
 
 
@@ -21,6 +21,7 @@ adapter = None
 core = None
 background_task = None
 pc_generator = ProofCardGenerator()
+pc_generator_v14 = ProofCardGeneratorV14()
 
 
 async def run_core_loop():
@@ -89,7 +90,7 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
-    return {"status": "running", "service": "DAE_P1 Demo Core V1.3"}
+    return {"status": "running", "service": "DAE_P1 Demo Core V1.3 / V1.4"}
 
 @app.get("/metrics")
 def get_metrics():
@@ -226,7 +227,7 @@ def get_modules_status():
     add_mod("M05", "SnapshotManager", "Active", {"snapshots_count": len(core.snaps_buf)})
     
     # M13 fp_lite
-    add_mod("M13", "fp_lite", "Active", {"note": "V1.3 ProofCard Generator Ready"})
+    add_mod("M13", "fp_lite", "Active", {"note": "V1.3 + V1.4 ProofCard Generator Ready"})
 
     # M14 Bundle Reader
     add_mod("M14", "BundleReader", "Offline", {"note": "Library"})
@@ -443,6 +444,94 @@ def get_device_proof(device_id: str, profile: str = "WIFI78_INSTALL_ACCEPT"):
         return card
     except Exception as e:
         return {"error": f"Proof Generation Failed: {e}"}
+
+@app.get("/device/{device_id}/proof/v1.4")
+def get_device_proof_v14(
+    device_id: str,
+    profile: str = "WIFI78_INSTALL_ACCEPT",
+    byuse_context: str = "",
+    export_mode: str = "min_only",
+):
+    """
+    Get ProofCard V1.4 with privacy/admissibility framework.
+
+    Parameters:
+      - profile: Profile ref (e.g. WIFI78_INSTALL_ACCEPT, PROFILE_OPENRAN_RIC)
+      - byuse_context: BYUSE context (e.g. SUPPORT_CLOSURE, COMPLIANCE_DEFENSE). Empty = none.
+      - export_mode: 'min_only' (default) or 'full_with_auth'
+    """
+    if device_id != "local":
+        return {"error": "Only local device implemented for V1.4 ProofCard"}
+
+    if not core:
+        return {"error": "Core not initialized"}
+
+    metrics = core.metrics_buf.snapshot()[-100:]
+
+    from dataclasses import asdict, is_dataclass
+    metrics_dicts = [asdict(m) if is_dataclass(m) else m for m in metrics]
+
+    manifest = core.get_manifest(device_id)
+    manifest_ref = manifest["manifest_ref"]
+
+    try:
+        ctx_overrides = {}
+        if byuse_context:
+            ctx_overrides["byuse_context_ref"] = byuse_context
+        if export_mode:
+            ctx_overrides["proposed_egress"] = export_mode
+
+        card = pc_generator_v14.generate(
+            metrics_dicts,
+            profile,
+            window_ref_str="W-LATEST-100",
+            manifest_ref_str=manifest_ref,
+            ctx_overrides=ctx_overrides or None,
+        )
+
+        # Apply egress gate to filter output
+        from dae_p1.M13A_privacy_framework import AttemptCtx
+        egress_result = pc_generator_v14.apply_egress_gate(card)
+
+        response = {
+            "proof_card": card,
+            "egress": {
+                "mode": egress_result.mode,
+                "allowed": egress_result.allowed,
+                "egress_receipt_ref": egress_result.egress_receipt_ref,
+                "reason_code": egress_result.reason_code,
+            },
+        }
+
+        # If egress is MIN_ONLY, strip priv section from the returned card
+        if egress_result.mode == "MIN_ONLY" and "priv" in card:
+            card_copy = dict(card)
+            card_copy.pop("priv", None)
+            response["proof_card"] = card_copy
+
+        return response
+    except Exception as e:
+        return {"error": f"V1.4 Proof Generation Failed: {e}"}
+
+
+@app.get("/proof/versions")
+def get_proof_versions():
+    """List available ProofCard versions."""
+    return {
+        "versions": [
+            {
+                "version": "V1.3",
+                "endpoint": "/device/{device_id}/proof",
+                "description": "Core ProofCard with verdict, p50/p95, outcome_facet",
+            },
+            {
+                "version": "V1.4",
+                "endpoint": "/device/{device_id}/proof/v1.4",
+                "description": "V1.3 + Privacy/Admissibility framework (PC-Min/PC-Priv, egress gate, BYUSE)",
+            },
+        ]
+    }
+
 
 @app.get("/device/{device_id}/manifest")
 def get_device_manifest(device_id: str):

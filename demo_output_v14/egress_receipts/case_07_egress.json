@@ -1,0 +1,10 @@
+{
+  "egress_receipt_ref": "EGRESS-REC-c2b952cd78bf",
+  "allowed": false,
+  "mode": "DENY",
+  "reason_code": [
+    "RC_EGRESS_DENIED_MISSING_AUTH"
+  ],
+  "timestamp": "2026-02-11T10:04:03.069392",
+  "case_id": "case_07"
+}

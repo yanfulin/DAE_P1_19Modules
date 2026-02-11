@@ -1,0 +1,10 @@
+{
+  "egress_receipt_ref": "EGRESS-REC-e03fc54694ac",
+  "allowed": true,
+  "mode": "PRIV_ALLOWED",
+  "reason_code": [
+    "RC_EGRESS_PRIV_ALLOWED"
+  ],
+  "timestamp": "2026-02-11T10:04:03.070880",
+  "case_id": "case_08"
+}

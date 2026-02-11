@@ -1,0 +1,88 @@
+# DAE P1 ProofCard V1.4 — Privacy / Admissibility Configuration
+# This file defines privacy governance policies for each profile,
+# BYUSE triggered-requiredness rules, and egress gate settings.
+
+profile_policies:
+  PROFILE_OPENRAN_RIC:
+    privacy_applicability: "USER_AFFECTING"
+    privacy_validity_precondition: true
+    on_privacy_fail: "DENY"
+    default_redaction_profile: "REDACT.MIN"
+    default_disclosure_scope: "SCOPE.MIN"
+    default_retention: "RET.7D"
+
+  WIFI78_INSTALL_ACCEPT:
+    privacy_applicability: "METADATA_ONLY"
+    privacy_validity_precondition: false
+    on_privacy_fail: "DEGRADE"
+    default_redaction_profile: "REDACT.MIN"
+    default_disclosure_scope: "SCOPE.MIN"
+    default_retention: "RET.7D"
+
+  WIFI78_MESH_BACKHAUL_SPLIT:
+    privacy_applicability: "METADATA_ONLY"
+    privacy_validity_precondition: false
+    on_privacy_fail: "DEGRADE"
+
+  WIFI78_OSCILLATION_GUARD:
+    privacy_applicability: "METADATA_ONLY"
+    privacy_validity_precondition: false
+    on_privacy_fail: "DEGRADE"
+
+  FWA_INSTALL_ACCEPT:
+    privacy_applicability: "METADATA_ONLY"
+    privacy_validity_precondition: false
+    on_privacy_fail: "DEGRADE"
+
+  FWA_PLACEMENT_GUIDE:
+    privacy_applicability: "METADATA_ONLY"
+    privacy_validity_precondition: false
+    on_privacy_fail: "DEGRADE"
+
+  FWA_CONGESTION_SUSPECT:
+    privacy_applicability: "METADATA_ONLY"
+    privacy_validity_precondition: false
+    on_privacy_fail: "DEGRADE"
+
+  CABLE_INSTALL_ACCEPT:
+    privacy_applicability: "METADATA_ONLY"
+    privacy_validity_precondition: false
+    on_privacy_fail: "DEGRADE"
+
+  CABLE_UPSTREAM_INTERMITTENT:
+    privacy_applicability: "METADATA_ONLY"
+    privacy_validity_precondition: false
+    on_privacy_fail: "DEGRADE"
+
+  CABLE_PLANT_IMPAIRMENT_SUSPECT:
+    privacy_applicability: "METADATA_ONLY"
+    privacy_validity_precondition: false
+    on_privacy_fail: "DEGRADE"
+
+byuse_policies:
+  SUPPORT_CLOSURE:
+    required_refs:
+      - policy_snapshot_ref
+      - window_policy_id
+      - window_ref
+      - privacy_policy_ref
+      - disclosure_scope_ref
+    on_missing: "NOT_CLOSURE_GRADE"
+
+  COMPLIANCE_DEFENSE:
+    required_refs:
+      - policy_snapshot_ref
+      - window_policy_id
+      - window_ref
+      - privacy_policy_ref
+      - disclosure_scope_ref
+      - authority_scope_ref
+    on_missing: "NOT_CLOSURE_GRADE"
+
+egress_gate:
+  default_mode: "MIN_ONLY"
+  allow_priv_export_if:
+    requires:
+      - disclosure_scope_ref
+      - authority_scope_ref
+  always_emit_egress_receipt: true

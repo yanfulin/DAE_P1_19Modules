@@ -1,0 +1,101 @@
+{
+  "proof_card_ref": "pc-e44c380e7dec",
+  "profile_ref": "PROFILE_OPENRAN_RIC",
+  "verdict": "READY",
+  "window_ref": "W-DEMO-case_03",
+  "reason_code": [
+    "CHECKS_PASSED",
+    "RC_POLICY_DRIFT",
+    "RC_PRIVACY_FAIL"
+  ],
+  "enforcement_path_ref": "EP-DEFAULT-01",
+  "authority_scope_ref": "SCOPE-CPE-LOCAL",
+  "validity_horizon_ref": "7DAYS",
+  "validity_verdict": "VALID",
+  "basis_ref": "BASIS-V1.4",
+  "sample_count": 20,
+  "p50": [
+    {
+      "name": "rtt_ms_p50",
+      "value": 24.0,
+      "unit": "auto"
+    },
+    {
+      "name": "loss_pct_p50",
+      "value": 0.15000000000000002,
+      "unit": "auto"
+    },
+    {
+      "name": "wifi_retry_pct_p50",
+      "value": 1.3,
+      "unit": "auto"
+    }
+  ],
+  "p95": [
+    {
+      "name": "rtt_ms_p95",
+      "value": 28.0,
+      "unit": "auto"
+    },
+    {
+      "name": "loss_pct_p95",
+      "value": 0.2,
+      "unit": "auto"
+    },
+    {
+      "name": "wifi_retry_pct_p95",
+      "value": 1.9,
+      "unit": "auto"
+    }
+  ],
+  "outcome_facet": [
+    {
+      "name": "rtt_ms_p95",
+      "value": 28.0,
+      "unit": "ms"
+    },
+    {
+      "name": "loss_rate_p95",
+      "value": 0.2,
+      "unit": "%"
+    },
+    {
+      "name": "phy_rate_p50",
+      "value": 0,
+      "unit": "Mbps"
+    }
+  ],
+  "event_type": [],
+  "evidence_bundle_ref": "bundle:W-DEMO-case_03",
+  "manifest_ref": "MAN-DEMO-case_03",
+  "attempt_id": "att-343c10c3afb3",
+  "enforcement_path_id": "EP-DEFAULT-01",
+  "gate_ref": "GATE-DEFAULT-01",
+  "evidence_grade": "NOT_CLOSURE_GRADE",
+  "version_refs": {
+    "policy_snapshot_ref": "POLICY@2026-02-10#1",
+    "window_policy_id": "WP-001"
+  },
+  "missing_evidence_class": [
+    "PRIVACY_STALE"
+  ],
+  "upgrade_requirements_ref": null,
+  "min": {
+    "admission_verdict": "DENY",
+    "admission_effect": "FREEZE_EGRESS",
+    "privacy_check_verdict": "FAIL",
+    "egress_receipt_ref": null,
+    "byuse_context_ref": null
+  },
+  "priv": {
+    "privacy_policy_ref": "PRIV@v3",
+    "purpose_ref": "PURP.NETWORK_OPERATION",
+    "retention_ref": "RET.7D",
+    "disclosure_scope_ref": "SCOPE.MIN",
+    "redaction_profile_ref": null,
+    "privacy_violation_flag": true,
+    "privacy_violation_reason_code": [
+      "RC_PRIVACY_FAIL"
+    ]
+  }
+}

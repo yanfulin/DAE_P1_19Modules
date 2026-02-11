@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git log:*)",
+      "mcp__Desktop_Commander__read_file",
+      "mcp__Desktop_Commander__start_process",
+      "mcp__Desktop_Commander__write_file",
+      "Bash(\"C:\\\\Users\\\\rick.lin\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe\" -m pytest tests/test_privacy_framework.py tests/test_proof_v14.py -v)",
+      "Bash(\"C:\\\\Users\\\\rick.lin\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe\" -m unittest tests.test_privacy_framework tests.test_proof_v14 -v)",
+      "Bash(\"C:\\\\Users\\\\rick.lin\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe\" -m unittest tests.test_fp_lite_v13 -v)",
+      "Bash(dir \"D:\\\\OneDrive - ubeeinteractive.com\\\\桌面\\\\vince\\\\DAE_P1_19Modules\\\\.claude\\\\worktrees\\\\xenodochial-tu\\\\specs\\\\ProofCard_Free_V1.4_Spec.md\")",
+      "Bash(dir:*)",
+      "Bash(\"C:\\\\Users\\\\rick.lin\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe\" demo_v14_simulator.py --output-dir demo_output_v14)"
+    ]
+  }
+}

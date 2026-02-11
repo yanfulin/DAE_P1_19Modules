@@ -209,6 +209,27 @@ class CablePlantImpairmentSuspect(ProfileBase):
             {"name": "fec_corrected_p95", "value": p95.get("fec_corrected", 0), "unit": "count"}
         ]
 
+# Open RAN Profile (V1.4)
+class OpenRanRicProfile(ProfileBase):
+    REF = "PROFILE_OPENRAN_RIC"
+    MIN_SAMPLES = 10
+
+    def check(self, p50, p95, p5) -> List[str]:
+        reasons = []
+        if p95.get("rtt_ms", 0) > 50.0:
+            reasons.append("P95_RTT_TOO_HIGH")
+        if p95.get("loss_pct", 0) > 0.5:
+            reasons.append("P95_LOSS_TOO_HIGH")
+        return reasons
+
+    def get_outcome_facets(self, p50, p95, p5):
+        return [
+            {"name": "rtt_ms_p95", "value": p95.get("rtt_ms", 0), "unit": "ms"},
+            {"name": "loss_rate_p95", "value": p95.get("loss_pct", 0), "unit": "%"},
+            {"name": "phy_rate_p50", "value": p50.get("phy_rate_mbps", 0), "unit": "Mbps"},
+        ]
+
+
 class ProfileManager:
     PROFILES = {
         Wifi78InstallAccept.REF: Wifi78InstallAccept(),
@@ -219,7 +240,8 @@ class ProfileManager:
         FwaCongestionSuspect.REF: FwaCongestionSuspect(),
         CableInstallAccept.REF: CableInstallAccept(),
         CableUpstreamIntermittent.REF: CableUpstreamIntermittent(),
-        CablePlantImpairmentSuspect.REF: CablePlantImpairmentSuspect()
+        CablePlantImpairmentSuspect.REF: CablePlantImpairmentSuspect(),
+        OpenRanRicProfile.REF: OpenRanRicProfile(),
     }
     
     @staticmethod
@@ -371,4 +393,178 @@ class ProofCardGenerator:
             card["reason_code"] = ["CHECKS_PASSED"]
 
         return card
+
+
+# --- 4. ProofCard V1.4 Generator ---
+
+class ProofCardGeneratorV14:
+    """
+    V1.4 ProofCard generator with privacy framework integration.
+
+    Delegates core metric computation to the V1.3 ProofCardGenerator,
+    then layers on the four privacy hooks (privacy_check, byuse_qualify,
+    admission mapping, egress_gate).
+    """
+
+    def __init__(self, privacy_config=None):
+        from dae_p1.M13A_privacy_framework import (
+            load_privacy_config, PrivacyConfig,
+        )
+        self.privacy_cfg: PrivacyConfig = privacy_config or load_privacy_config()
+        self._v13 = ProofCardGenerator()
+
+    def generate(
+        self,
+        window_data: List[Dict[str, Any]],
+        profile_ref: str,
+        window_ref_str: str,
+        manifest_ref_str: str = "TBD",
+        ctx_overrides: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Full V1.4 pipeline:
+          1. V1.3 generate() → base card
+          2. privacy_check()
+          3. byuse_qualify()
+          4. compute_admission() → evidence_grade + admission_verdict
+          5. _build_v14_card() → assemble min/priv sections
+        """
+        from dae_p1.M13A_privacy_framework import (
+            AttemptCtx, privacy_check, byuse_qualify, compute_admission,
+        )
+
+        # 1) V1.3 base card
+        v13_card = self._v13.generate(
+            window_data, profile_ref, window_ref_str, manifest_ref_str
+        )
+
+        # 2) Build context
+        overrides = ctx_overrides or {}
+        attempt_id = overrides.get("attempt_id", f"att-{uuid.uuid4().hex[:12]}")
+        ctx = AttemptCtx(
+            attempt_id=attempt_id,
+            profile_ref=profile_ref,
+            enforcement_path_id=overrides.get("enforcement_path_id", "EP-DEFAULT-01"),
+            gate_ref=overrides.get("gate_ref", "GATE-DEFAULT-01"),
+            window_ref=window_ref_str,
+            version_refs=overrides.get("version_refs", {
+                "policy_snapshot_ref": "POLICY@2026-02-10#1",
+                "window_policy_id": "WP@v3",
+                "mapping_config_id": "MC@v5",
+                "normalization_ref": "NR@v2",
+                "translation_basis_id": "TB@v9",
+            }),
+            privacy_policy_ref=overrides.get("privacy_policy_ref"),
+            purpose_ref=overrides.get("purpose_ref"),
+            retention_ref=overrides.get("retention_ref"),
+            disclosure_scope_ref=overrides.get("disclosure_scope_ref"),
+            redaction_profile_ref=overrides.get("redaction_profile_ref"),
+            authority_scope_ref=overrides.get("authority_scope_ref"),
+            privacy_policy_version=overrides.get("privacy_policy_version"),
+            expected_policy_version=overrides.get("expected_policy_version"),
+            byuse_context_ref=overrides.get("byuse_context_ref"),
+            proposed_egress=overrides.get("proposed_egress"),
+        )
+
+        # 3) Privacy check
+        priv_result = privacy_check(ctx, self.privacy_cfg)
+
+        # 4) BYUSE qualify
+        byuse_result = byuse_qualify(ctx, self.privacy_cfg)
+
+        # 5) Compute admission / grade
+        profile_policy = self.privacy_cfg.get_profile_policy(profile_ref)
+        admission = compute_admission(
+            v13_card["verdict"], priv_result, byuse_result, profile_policy
+        )
+
+        # 6) Assemble V1.4 card
+        return self._build_v14_card(
+            v13_card, ctx, priv_result, byuse_result, admission
+        )
+
+    def _build_v14_card(
+        self,
+        v13_card: Dict[str, Any],
+        ctx,
+        priv_result,
+        byuse_result,
+        admission: Dict[str, str],
+    ) -> Dict[str, Any]:
+        """Assemble the full V1.4 ProofCard structure."""
+        from dae_p1.M13A_privacy_framework import AttemptCtx
+
+        # Start with all V1.3 fields
+        card = dict(v13_card)
+
+        # --- New V1.4 top-level fields ---
+        card["attempt_id"] = ctx.attempt_id
+        card["enforcement_path_id"] = ctx.enforcement_path_id
+        card["gate_ref"] = ctx.gate_ref
+        card["evidence_grade"] = admission["evidence_grade"]
+        card["version_refs"] = ctx.version_refs
+        card["basis_ref"] = "BASIS-V1.4"
+
+        # Merge missing evidence classes
+        missing = list(priv_result.missing) + list(byuse_result.missing)
+        card["missing_evidence_class"] = missing
+        card["upgrade_requirements_ref"] = byuse_result.upgrade_requirements_ref
+
+        # Merge reason codes (V1.3 + privacy + byuse)
+        all_reasons = list(card.get("reason_code", []))
+        all_reasons.extend(priv_result.reason_code)
+        all_reasons.extend(byuse_result.reason_code)
+        card["reason_code"] = all_reasons
+
+        # --- PC-Min section ---
+        card["min"] = {
+            "admission_verdict": admission["admission_verdict"],
+            "admission_effect": admission["admission_effect"],
+            "privacy_check_verdict": priv_result.verdict,
+            "egress_receipt_ref": None,   # filled by egress_gate later
+            "byuse_context_ref": ctx.byuse_context_ref,
+        }
+
+        # --- PC-Priv section ---
+        card["priv"] = {
+            "privacy_policy_ref": ctx.privacy_policy_ref,
+            "purpose_ref": ctx.purpose_ref,
+            "retention_ref": ctx.retention_ref,
+            "disclosure_scope_ref": ctx.disclosure_scope_ref,
+            "redaction_profile_ref": ctx.redaction_profile_ref,
+            "privacy_violation_flag": priv_result.verdict == "FAIL",
+            "privacy_violation_reason_code": (
+                [r for r in priv_result.reason_code if r.startswith("RC_PRIVACY")]
+                if priv_result.verdict == "FAIL" else []
+            ),
+        }
+
+        return card
+
+    def apply_egress_gate(
+        self,
+        proof_card: Dict[str, Any],
+        ctx_overrides: Optional[Dict[str, Any]] = None,
+    ):
+        """
+        Run egress gate on an already-generated V1.4 card.
+        Returns an EgressResult and mutates card["min"]["egress_receipt_ref"].
+        """
+        from dae_p1.M13A_privacy_framework import (
+            AttemptCtx, egress_gate,
+        )
+        overrides = ctx_overrides or {}
+        ctx = AttemptCtx(
+            attempt_id=proof_card.get("attempt_id", ""),
+            profile_ref=proof_card.get("profile_ref", ""),
+            window_ref=proof_card.get("window_ref", ""),
+            disclosure_scope_ref=overrides.get("disclosure_scope_ref"),
+            authority_scope_ref=overrides.get("authority_scope_ref"),
+            proposed_egress=overrides.get("proposed_egress", "min_only"),
+        )
+        result = egress_gate(ctx, proof_card, self.privacy_cfg)
+        # Write receipt back into card
+        if proof_card.get("min"):
+            proof_card["min"]["egress_receipt_ref"] = result.egress_receipt_ref
+        return result
 

@@ -92,6 +92,18 @@ export const fetchProofData = async (deviceId) => {
     }
 };
 
+export const fetchProofDataV14 = async (deviceId, { byuseContext = '', exportMode = 'min_only' } = {}) => {
+    try {
+        const params = new URLSearchParams({ export_mode: exportMode });
+        if (byuseContext) params.set('byuse_context', byuseContext);
+        const response = await fetch(`${API_BASE_URL}/device/${deviceId}/proof/v1.4?${params}`);
+        return await response.json();
+    } catch (error) {
+        console.error(`Error fetching V1.4 proof for ${deviceId}:`, error);
+        return null;
+    }
+};
+
 export const fetchManifest = async (deviceId) => {
     try {
         const response = await fetch(`${API_BASE_URL}/device/${deviceId}/manifest`);
